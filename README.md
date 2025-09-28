@@ -104,7 +104,7 @@ verifier.cleanExpired(); // Deletes expired OTPs from the database
 
 `cleanExpired()` – Delete expired OTPs from database
 
-Database
+#### Database
 
 Uses SQLite (authverify.db) to store:
 
