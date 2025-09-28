@@ -1,4 +1,4 @@
-const Verifier = require('../lib/verifier');
+const Verifier = require('../lib/auth-verify');
 
 // Initialize Verifier
 const verifier = new Verifier({
