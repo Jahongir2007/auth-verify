@@ -86,7 +86,7 @@ verifier.cleanExpired(); // Deletes expired OTPs from the database
 
 `cooldown` (number) – Cooldown in seconds between requests (default: 60)
 
-Methods
+#### Methods
 
 `html(content)` – Sets optional HTML content with {otp} placeholder
 
