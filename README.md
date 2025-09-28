@@ -88,11 +88,11 @@ verifier.cleanExpired(); // Deletes expired OTPs from the database
 
 #### Methods
 
-`html(content)` – Sets optional HTML content with {otp} placeholder
+`html(content)` – Sets optional HTML content with `{otp}` placeholder
 
-`subject(content)` – Sets optional email subject with {otp} placeholder
+`subject(content)` – Sets optional email subject with `{otp}` placeholder
 
-`text(content)` – Sets optional plain text with {otp} placeholder
+`text(content)` – Sets optional plain text with `{otp}` placeholder
 
 `sendTo(email, callback)` – Sends OTP to an email
 
