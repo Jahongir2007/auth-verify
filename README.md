@@ -1,119 +1,262 @@
 # auth-verify
 
-`auth-verify` is a **Node.js library** for handling **OTP (One-Time Password) generation, email verification, and expiration tracking**. It provides secure OTP generation, rate-limiting, cooldowns, and integration with **Nodemailer** for sending verification emails.  
+**auth-verify** is a Node.js authentication utility that provides:
+- Secure OTP (one-time password) generation and verification
+- Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
+- JWT creation, verification and optional token revocation with memory/Redis storage
+- Session management (in-memory or Redis)
+- Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
 
----
-
-## Features
-
-- Generate secure OTP codes  
-- Send OTP via **email** using Nodemailer  
-- Verify OTP codes with expiration checks  
-- Limit OTP requests per day and enforce cooldowns  
-- Store OTPs in a **SQLite database**  
-- Fully asynchronous with callback support  
+> This README documents the code structure and APIs found in the library files you provided (OTPManager, JWTManager, SessionManager, AuthVerify).
 
 ---
 
 ## Installation
 
 ```bash
+# from npm (when published)
 npm install auth-verify
+
+# or locally during development
+# copy the package into your project and `require` it`
 ```
-### 🚀 Quick Start
 
-##### 1. Initialize Verifier
+---
+
+## Quick overview
+
+- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, and (optionally) `.session` managers.
+- `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"`.
+- `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
+- `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
+
+---
+
+## Example: Initialize library (CommonJS)
+
 ```js
-const Verifier = require('auth-verify');
+const AuthVerify = require('auth-verify');
 
-const verifier = new Verifier({
-    sender: 'your_email@example.com',
-    pass: 'your_email_password',
-    serv: 'gmail', // SMTP service name
-    otp: {
-        leng: 6,        // OTP length (default: 6)
-        expMin: 3,      // OTP expiration in minutes (default: 3)
-        limit: 5,       // Max requests per day (default: 5)
-        cooldown: 60    // Cooldown between requests in seconds (default: 60)
-    }
+const auth = new AuthVerify({
+  jwtSecret: "super_secret_value",
+  storeTokens: "memory", // or "redis" or "none"
+  otpExpiry: "5m",       // supports number (seconds) OR string like '30s', '5m', '1h'
+  otpHash: "sha256",     // optional OTP hashing algorithm
+  // you may pass redisUrl inside managers' own options when using redis
 });
 ```
-##### 2. Send OTP
+
+---
+
+## JWT usage
+
 ```js
-verifier
-    .html("<h1>Your OTP is {otp}</h1>")   // optional HTML template
-    .subject("Verify your account: {otp}") // optional subject
-    .text("Your OTP is {otp}")            // optional plain text
-    .sendTo('user@example.com', (err, success) => {
-        if (err) return console.error(err);
-        console.log("OTP sent successfully!");
-    });
+// create JWT
+const token = await auth.jwt.sign({ userId: 123 }, '1h'); // expiry string or number (ms)
+console.log('token', token);
+
+// verify
+const decoded = await auth.jwt.verify(token);
+console.log('decoded', decoded);
+
+// decode without verification
+const payload = await auth.jwt.decode(token);
+
+// revoke a token (immediately)
+await auth.jwt.revoke(token, 0);
+
+// revoke token until a time in the future (e.g. '10m' or number ms)
+await auth.jwt.revokeUntil(token, '10m');
+
+// check if token is revoked (returns boolean)
+const isRevoked = await auth.jwt.isRevoked(token);
 ```
-##### 3. Verify OTP
+
+Notes:
+- `sign` and `verify` support callback and promise styles in the implementation. When `storeTokens` is `"redis"` you should use the promise/async style (callback mode returns an error for redis in the current implementation).
+
+---
+
+## OTP (email / sms / telegram / custom sender)
+
+### Configure sender
+
+You can set the default sender (email/sms/telegram):
+
 ```js
-verifier.code('123456').verifyFor('user@example.com', (err, isValid) => {
-    if (err) return console.error(err);
-    console.log(isValid ? "✅ OTP verified" : "❌ Invalid or expired OTP");
+// email example
+auth.otp.setSender({
+  via: 'email',
+  sender: 'your@address.com',
+  pass: 'app-password-or-smtp-pass',
+  service: 'gmail' // or 'smtp'
+  // if smtp service: host, port, secure (boolean)
+});
+
+// sms example (the internal helper expects provider/apiKey or mock flag)
+auth.otp.setSender({
+  via: 'sms',
+  provider: 'infobip',
+  apiKey: 'xxx',
+  apiSecret: 'yyy',
+  sender: 'SENDER_NAME',
+  mock: true // in dev prints message instead of sending
+});
+
+// telegram example
+auth.otp.setSender({
+  via: 'telegram',
+  token: '123:ABC', // bot token
+  // call auth.otp.setupTelegramBot(token) to start the bot
 });
 ```
-##### 4. Get OTP Details (for testing/debugging)
+
+### Generate → Save → Send (chainable)
+
+OTP generation is chainable: `generate()` returns the OTP manager instance.
+
 ```js
-verifier.getOTP('user@example.com', (err, data) => {
-    if (err) return console.error(err);
-    console.log(data); // { code: '123456', expiresAt: '2025-09-28T...' }
+// chainable + callback style example
+auth.otp.generate(6).set('user@example.com', (err) => {
+  if (err) throw err;
+  auth.otp.message({
+    to: 'user@example.com',
+    subject: 'Your OTP',
+    html: `Your code: <b>${auth.otp.code}</b>`
+  }, (err, info) => {
+    if (err) console.error('send error', err);
+    else console.log('sent', info && info.messageId);
+  });
 });
 ```
-##### 5. Clean Expired OTPs
+
+Async/await style:
+
 ```js
-verifier.cleanExpired(); // Deletes expired OTPs from the database
+await auth.otp.generate(6);              // generates and stores `auth.otp.code`
+await auth.otp.set('user@example.com'); // saves OTP into memory/redis
+await auth.otp.message({
+  to: 'user@example.com',
+  subject: 'Verify',
+  html: `Your code: <b>${auth.otp.code}</b>`
+});
 ```
-#### API Reference
-`new Verifier(options)`
 
-`sender` – sender email for Nodemailer
+### Verify
 
-`pass` – email password
+```js
+// Promise style
+try {
+  const ok = await auth.otp.verify({ check: 'user@example.com', code: '123456' });
+  console.log('verified', ok);
+} catch (err) {
+  console.error('verify failed', err.message);
+}
 
-`serv` – SMTP service name
+// Callback style also supported: auth.otp.verify({check, code}, callback)
+```
 
-`otp` – object:
+### Resend and cooldown / max attempts
 
-`leng` (number) – OTP length (default: 6)
+- `auth.otp.cooldown('30s')` or `auth.otp.cooldown(30000)` — set cooldown duration.
+- `auth.otp.maxAttempt(5)` — set maximum attempts allowed.
+- `auth.otp.resend(identifier)` — regenerate and resend OTP, observing cooldown and expiry rules.
 
-`expMin` (number) – OTP expiration in minutes (default: 3)
+`resend` returns the new code (promise style) or calls callback.
 
-`limit` (number) – Max requests per day (default: 5)
+---
 
-`cooldown` (number) – Cooldown in seconds between requests (default: 60)
+## Telegram integration
 
-#### Methods
+There are two ways to use Telegram flow:
 
-`html(content)` – Sets optional HTML content with `{otp}` placeholder
+1. Use the built-in `senderConfig.via = 'telegram'` and call `auth.otp.setupTelegramBot(botToken)` — this starts a polling bot that asks users to share their phone via `/start`, and then matches the phone to in-memory/Redis OTP records and replies with the code.
 
-`subject(content)` – Sets optional email subject with `{otp}` placeholder
+2. Developer-supplied custom sender (see below) — you can create your own bot and call it from `auth.use(...).send(...)` or register via `auth.register.sender()`.
 
-`text(content)` – Sets optional plain text with `{otp}` placeholder
+**Important**: Only one bot using long polling must be running per bot token — if you get `409 Conflict` it's because another process or instance is already polling that bot token.
 
-`sendTo(email, callback)` – Sends OTP to an email
+---
 
-`code(otp)` – Set user-provided OTP for verification
+## Developer extensibility (custom senders)
 
-`verifyFor(email, callback)` – Verify OTP for the given email
+You can register custom senders and use them:
 
-`getOTP(email, callback)` – Retrieve OTP and expiration from DB
+```js
+// register a named sender function
+auth.register.sender('consoleOtp', async ({ to, code }) => {
+  console.log(`[DEV SEND] send to ${to}: ${code}`);
+});
 
-`cleanExpired()` – Delete expired OTPs from database
+// use it later (chainable)
+await auth.use('consoleOtp').send({ to: '+998901234567', code: await auth.otp.generate(5) });
+```
 
-#### Database
+---
 
-Uses SQLite (authverify.db) to store:
+When a custom sender is registered, `auth.otp.message()` will first attempt the `customSender` before falling back to built-in providers.
 
-Email
+---
 
-OTP code
+## SessionManager
 
-Expiration timestamp
+```js
+const SessionManager = require('./src/session'); // or auth.session after export
+const sessions = new SessionManager({ storeTokens: 'redis' });
 
-Request count
+// create
+const sessionId = await sessions.create('user123', { expiresIn: '2h' });
 
-Last request timestamp
+// verify
+const userId = await sessions.verify(sessionId);
+
+// destroy
+await sessions.destroy(sessionId);
+```
+
+Notes:
+- `expiresIn` accepts numeric seconds or strings like `'30s'`, `'5m'`, `'1h'`, `'1d'`.
+
+---
+
+## Helpers
+
+`helpers/helper.js` exposes utility functions used by managers:
+
+- `generateSecureOTP(length, hashAlgorithm)` — returns secure numeric OTP string
+- `parseTime(strOrNumber)` — converts `'1h' | '30s' | number` into milliseconds
+- `resendGeneratedOTP(params)` — helper to send email via nodemailer (used by resend)
+- `sendSMS(params)` — helper for sending SMS using supported providers or mock
+
+---
+
+## Error handling and notes
+
+- Many methods support both **callback** and **Promise (async/await)** styles. When using Redis store, prefer **async/await** (callback variants intentionally return an error when Redis is selected).
+- OTP storage keys are the user identifier you pass (email or phone number). Keep identifiers consistent.
+- Be careful when using Telegram polling: do not run two instances with polling true for the same bot token (use webhooks or a single process).
+- When configuring SMTP (non-Gmail), provide `host`, `port` and `secure` in `setSender()`.
+
+---
+
+## Suggested folder structure
+
+```
+auth-verify/
+├─ README.md
+├─ package.json
+├─ src/
+│  ├─ index.js         // exports AuthVerify
+│  ├─ jwt.js
+│  ├─ otp.js
+│  ├─ session.js
+│  └─ helpers/helper.js
+```
+
+---
+
+## Contributing & License
+
+Contributions welcome! Open issues / PRs for bugs, improvements, or API suggestions.
+
+MIT © 2025 — Jahongir Sobirov
