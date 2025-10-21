@@ -377,7 +377,7 @@ class OTPManager {
 
             // ---- TELEGRAM BOT PART ----
             // else if(this.senderConfig.via === 'telegram'){
-            //     const token = "8476429380:AAH8TNrdrqrzdoZ23ERy2w0eQnLSdUN8qB4";
+            //     const token = "#########";
             //     const bot = new TelegramBot(token, { polling: true });
             //     bot.onText(/\/start/, (msg) => {
             //         bot.sendMessage(msg.chat.id, "Please share your phone number:", {
