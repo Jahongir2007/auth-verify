@@ -3,7 +3,7 @@
 **auth-verify** is a Node.js authentication utility that provides:
 - Secure OTP (one-time password) generation and verification
 - Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
-- JWT creation, verification and optional token revocation with memory/Redis storage
+- JWT creation, verification and optional token revocation with memory/Redis storage (auto saving to HTTP cookies and verifiying from cookie storage)
 - Session management (in-memory or Redis)
 - Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
 
@@ -71,6 +71,40 @@ await auth.jwt.revokeUntil(token, '10m');
 // check if token is revoked (returns boolean)
 const isRevoked = await auth.jwt.isRevoked(token);
 ```
+## 🍪 Automatic Cookie Handling (New in v1.1.0)
+
+You can now automatically store and verify JWTs via HTTP cookies — no need to manually send them!
+```js
+const AuthVerify = require("auth-verify");
+const express = require("express");
+const app = express();
+
+const auth = new AuthVerify({
+  jwtSecret: "supersecret", storeTokens: "memory"
+});
+
+app.post("/login", async (req, res) => {
+  const token = await auth.jwt.sign({ userId: 1 }, "5s", { res });
+  res.json({ token }); // token is also set as cookie automatically
+});
+
+app.get("/verify", async (req, res) => {
+  try {
+    const data = await auth.jwt.verify(req); // auto reads from cookie
+    res.json({ valid: true, data });
+  } catch (err) {
+    res.json({ valid: false, error: err.message });
+  }
+});
+
+app.listen(3000, () => console.log("🚀 Server running at http://localhost:3000"));
+```
+
+What it does automatically:
+
+ - Saves token in a secure HTTP-only cookie
+ - Reads and verifies token from cookies
+ - Supports both async/await and callback styles
 
 Notes:
 - `sign` and `verify` support callback and promise styles in the implementation. When `storeTokens` is `"redis"` you should use the promise/async style (callback mode returns an error for redis in the current implementation).
