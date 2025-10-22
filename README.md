@@ -3,7 +3,8 @@
 **auth-verify** is a Node.js authentication utility that provides:
 - Secure OTP (one-time password) generation and verification
 - Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
-- JWT creation, verification and optional token revocation with memory/Redis storage (auto saving to HTTP cookies and verifiying from cookie storage)
+- JWT creation, verification and optional token revocation with memory/Redis storage
+- Automatic cookie handling
 - Session management (in-memory or Redis)
 - Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
 
