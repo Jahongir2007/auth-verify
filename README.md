@@ -1,18 +1,15 @@
 # auth-verify
 
 **auth-verify** is a Node.js authentication utility that provides:
-- Secure OTP (one-time password) generation and verification
-- Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
-- JWT creation, verification and optional token revocation with memory/Redis storage
-- Automatic cookie handling
-- Session management (in-memory or Redis)
-- Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
-
-> This README documents the code structure and APIs found in the library files you provided (OTPManager, JWTManager, SessionManager, AuthVerify).
-
+- ✅ Secure OTP (one-time password) generation and verification
+- ✅ Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
+- ✅ JWT creation, verification and optional token revocation with memory/Redis storage
+- ✅ Session management (in-memory or Redis)
+- ✅ New: OAuth 2.0 integration for Google, Facebook, GitHub, and X (Twitter)
+- ⚙️ Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
 ---
 
-## Installation
+## 🧩 Installation
 
 ```bash
 # from npm (when published)
@@ -24,16 +21,16 @@ npm install auth-verify
 
 ---
 
-## Quick overview
+## ⚙️ Quick overview
 
 - `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, and (optionally) `.session` managers.
 - `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"`.
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
-
+- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X
 ---
 
-## Example: Initialize library (CommonJS)
+## 🚀 Example: Initialize library (CommonJS)
 
 ```js
 const AuthVerify = require('auth-verify');
@@ -49,7 +46,7 @@ const auth = new AuthVerify({
 
 ---
 
-## JWT usage
+## 🔐 JWT Usage
 
 ```js
 // create JWT
@@ -72,7 +69,7 @@ await auth.jwt.revokeUntil(token, '10m');
 // check if token is revoked (returns boolean)
 const isRevoked = await auth.jwt.isRevoked(token);
 ```
-## 🍪 Automatic Cookie Handling (New in v1.1.0)
+### 🍪 Automatic Cookie Handling (v1.1.0+)
 
 You can now automatically store and verify JWTs via HTTP cookies — no need to manually send them!
 ```js
@@ -112,9 +109,9 @@ Notes:
 
 ---
 
-## OTP (email / sms / telegram / custom sender)
+## 🔢 OTP (email / sms / telegram / custom sender)
 
-### Configure sender
+### 🤝 Configure sender
 
 You can set the default sender (email/sms/telegram):
 
@@ -146,7 +143,7 @@ auth.otp.setSender({
 });
 ```
 
-### Generate → Save → Send (chainable)
+### ⛓️ Generate → Save → Send (chainable)
 
 OTP generation is chainable: `generate()` returns the OTP manager instance.
 
@@ -177,7 +174,7 @@ await auth.otp.message({
 });
 ```
 
-### Verify
+### ✔️ Verify
 
 ```js
 // Promise style
@@ -199,6 +196,128 @@ try {
 
 `resend` returns the new code (promise style) or calls callback.
 
+---
+## 🌍 OAuth 2.0 Integration (New in v1.2.0)
+`auth.oauth` supports login via Google, Facebook, GitHub, and X (Twitter).
+### Example (Google Login with Express)
+```js
+const express = require('express');
+const AuthVerify = require("auth-verify");
+const app = express();
+app.use(express.json());
+const auth = new AuthVerify({ jwtSecret: 's', storeTokens: 'memory'});
+
+const google = auth.oauth.google({clientId: 'YOUR_CLIENT_ID', clientSecret: 'YOUR_CLIENT_SECRET', redirectUri: 'http://localhost:3000/auth/google/callback'});
+app.get('/', async (req, res) => {
+      res.send(`
+    <h1>Login with Google</h1>
+    <a href="/auth/google">Login</a>
+  `);
+});
+
+
+app.get('/auth/google', (req, res) => google.redirect(res));
+
+app.get('/auth/google/callback', async (req, res)=>{
+    const code = req.query.code;
+    try {
+        const user = await google.callback(code);
+        res.send(`
+            <h2>Welcome, ${user.name}!</h2>
+            <img src="${user.picture}" width="100" style="border-radius:50%">
+            <p>Email: ${user.email}</p>
+            <p>Access Token: ${user.access_token.slice(0, 20)}...</p>
+        `);
+    } catch(err){
+        res.status(500).send("Error: " + err.message);
+    }
+});
+
+app.listen(3000, ()=>{
+    console.log('Server is running...');
+});
+```
+---
+### API documentation for OAuth
+ - `auth.oauth.google({...})` for making connection to your Google cloud app.
+ - `google.redirect(res)` for sending user/client to the Google OAuth page for verifying and selecting his accaount
+ - `google.callback(code)` for exchanging server code to the user/client token.
+
+### Other examples with other platforms
+```js
+const express = require('express');
+const AuthVerify = require("auth-verify");
+const app = express();
+app.use(express.json());
+const auth = new AuthVerify({ jwtSecret: 's', storeTokens: 'memory'});
+
+// --- Example: FACEBOOK LOGIN ---
+const facebook = auth.oauth.facebook({
+  clientId: "YOUR_FB_APP_ID",
+  clientSecret: "YOUR_FB_APP_SECRET",
+  redirectUri: "http://localhost:3000/auth/facebook/callback",
+});
+
+// --- Example: GITHUB LOGIN ---
+const github = auth.oauth.github({
+  clientId: "YOUR_GITHUB_CLIENT_ID",
+  clientSecret: "YOUR_GITHUB_CLIENT_SECRET",
+  redirectUri: "http://localhost:3000/auth/github/callback",
+});
+
+// --- Example: X (Twitter) LOGIN ---
+const twitter = auth.oauth.x({
+  clientId: "YOUR_TWITTER_CLIENT_ID",
+  clientSecret: "YOUR_TWITTER_CLIENT_SECRET",
+  redirectUri: "http://localhost:3000/auth/x/callback",
+});
+
+
+// ===== FACEBOOK ROUTES =====
+app.get("/auth/facebook", (req, res) => facebook.redirect(res));
+
+app.get("/auth/facebook/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+    const user = await facebook.callback(code);
+    res.json({ success: true, provider: "facebook", user });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
+// ===== GITHUB ROUTES =====
+app.get("/auth/github", (req, res) => github.redirect(res));
+
+app.get("/auth/github/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+    const user = await github.callback(code);
+    res.json({ success: true, provider: "github", user });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
+// ===== X (TWITTER) ROUTES =====
+app.get("/auth/x", (req, res) => twitter.redirect(res));
+
+app.get("/auth/x/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+    const user = await twitter.callback(code);
+    res.json({ success: true, provider: "x", user });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
+app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+
+```   
 ---
 
 ## Telegram integration
@@ -282,9 +401,12 @@ auth-verify/
 ├─ package.json
 ├─ src/
 │  ├─ index.js         // exports AuthVerify
-│  ├─ jwt.js
-│  ├─ otp.js
-│  ├─ session.js
+│  ├─ jwt/
+|  |  ├─ index.js
+|  |  ├─ cookie/index.js
+│  ├─ /otp/index.js
+│  ├─ /session/index.js
+|  ├─ /oauth/index.js
 │  └─ helpers/helper.js
 ```
 
