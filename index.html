@@ -111,9 +111,10 @@ await auth.use('console').send({ to: '+998901234567', code: '123456' })</pre>
         <div class="card">
           <h3 style="margin-top:0">Features & API</h3>
           <ul style="color:var(--muted);line-height:1.8">
-            <li><strong>JWTManager</strong>: sign, verify, decode, revoke, revokeUntil, isRevoked</li>
-            <li><strong>OTPManager</strong>: generate(), set(), message(), verify(), resend(), cooldown()</li>
-            <li><strong>SessionManager</strong>: create(), verify(), destroy()</li>
+            <li><strong>JWTManager</strong>: <code>sign()</code>, <code>verify()</code>, <code>decode()</code>, <code>revoke()</code>, <code>revokeUntil()</code>, <code>isRevoked</code></li>
+            <li><strong>OTPManager</strong>: <code>generate()</code>, <code>set()</code>, <code>message()</code>, <code>verify()</code>, <code>resend()</code>, <code>cooldown()</code></li>
+            <li><strong>SessionManager</strong>: <code>create()</code>, <code>verify()</code>, <code>destroy()</code></li>
+            <li><strong>OAuthManager</strong>: <code>google()</code>, <code>facebook()</code>, <code>github()</code>, <code>x()</code></li>
             <li>Supports callback and Promise styles where appropriate</li>
           </ul>
 
