@@ -1,6 +1,7 @@
 const JWTManager = require("./src/jwt");
 const OTPManager = require("./src/otp");
 const SessionManager = require("./src/session");
+const OAuthManager = require("./src/oauth");
 
 class AuthVerify {
   constructor(options = {}) {
@@ -39,6 +40,8 @@ class AuthVerify {
     //   }
     // }
     // ✅ No getters — directly reference otp.dev (it's a plain object)
+
+    this.oauth = new OAuthManager();
   }
   
   // Session helpers
