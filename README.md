@@ -23,11 +23,11 @@ npm install auth-verify
 
 ## ⚙️ Quick overview
 
-- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, and (optionally) `.session` managers.
+- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, (optionally) `.session` and `.oauth` managers.
 - `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"`.
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
-- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X
+- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X and Linkedin
 ---
 
 ## 🚀 Example: Initialize library (CommonJS)
@@ -50,7 +50,7 @@ const auth = new AuthVerify({
 
 ```js
 // create JWT
-const token = await auth.jwt.sign({ userId: 123 }, '1h'); // expiry string or number (ms)
+const token = await auth.jwt.sign({ userId: 123 }, '1h'); // expiry string or number (ms) (and also you can add '1m' (minute), '5s' (second) and '7d' (day)) 
 console.log('token', token);
 
 // verify
@@ -186,6 +186,11 @@ try {
 }
 
 // Callback style also supported: auth.otp.verify({check, code}, callback)
+auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
+  if(err) console.log(err);
+  if(isValid) console.log('Correct code!');
+  else console.log('Incorrect code!');
+});
 ```
 
 ### Resend and cooldown / max attempts
@@ -198,7 +203,7 @@ try {
 
 ---
 ## 🌍 OAuth 2.0 Integration (New in v1.2.0)
-`auth.oauth` supports login via Google, Facebook, GitHub, and X (Twitter).
+`auth.oauth` supports login via Google, Facebook, GitHub, X (Twitter) and Linkedin.
 ### Example (Google Login with Express)
 ```js
 const express = require('express');
@@ -272,6 +277,13 @@ const twitter = auth.oauth.x({
   redirectUri: "http://localhost:3000/auth/x/callback",
 });
 
+// --- Example: Linkedin LOGIN ---
+const linkedin = auth.oauth.linkedin({
+  clientId: "YOUR_LINKEDIN_CLIENT_ID",
+  clientSecret: "YOUR_LINKEDIN_CLIENT_SECRET",
+  redirectUri: "http://localhost:3000/auth/linkedin/callback"
+});
+
 
 // ===== FACEBOOK ROUTES =====
 app.get("/auth/facebook", (req, res) => facebook.redirect(res));
@@ -310,6 +322,19 @@ app.get("/auth/x/callback", async (req, res) => {
     const user = await twitter.callback(code);
     res.json({ success: true, provider: "x", user });
   } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+  
+// ==== LINKEDIN ROUTES ====
+app.get("/auth/linkedin", (req, res) => linkedin.redirect(res));
+
+app.get("/auth/linkedin/callback", async (req, res)=>{
+  try{
+    const { code } = req.query;
+    const user = await linkedin.callback(code);
+    res.json({ success: true, provider: "x", user });
+  }catch(err){
     res.status(400).json({ error: err.message });
   }
 });
