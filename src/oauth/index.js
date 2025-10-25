@@ -177,4 +177,63 @@ class OAuthManager {
     }
 }
 
+// --- LINKEDIN LOGIN ---
+    linkedin({ clientId, clientSecret, redirectUri }) {
+        return {
+            // Step 1: Redirect user to LinkedIn's authorization page
+            redirect(res) {
+                const linkedinURL =
+                    "https://www.linkedin.com/oauth/v2/authorization?" +
+                    new URLSearchParams({
+                        response_type: "code",
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                        scope: "r_liteprofile r_emailaddress",
+                        state: "secure123", // optional: you can randomize this
+                    });
+                res.redirect(linkedinURL);
+            },
+
+            // Step 2: Handle callback, exchange code for token, then get user data
+            async callback(code) {
+                // Exchange authorization code for access token
+                const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        redirect_uri: redirectUri,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                    }),
+                });
+
+                const tokenData = await tokenRes.json();
+                if (tokenData.error)
+                    throw new Error("OAuth Error: " + tokenData.error_description);
+
+                // Fetch basic profile info
+                const profileRes = await fetch("https://api.linkedin.com/v2/me", {
+                    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+                });
+                const profile = await profileRes.json();
+
+                // Fetch user's primary email
+                const emailRes = await fetch(
+                    "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
+                    { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+                );
+                const emailData = await emailRes.json();
+
+                return {
+                    id: profile.id,
+                    name: profile.localizedFirstName + " " + profile.localizedLastName,
+                    email: emailData.elements?.[0]?.["handle~"]?.emailAddress || null,
+                    access_token: tokenData.access_token,
+                };
+            },
+        };
+    }
+
 module.exports = OAuthManager;
