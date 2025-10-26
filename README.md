@@ -3,7 +3,7 @@ Modern and flexible authentication manager for Node.js —
 with JWT, OTP, Redis, and Cookie support built in.
 
 [![npm version](https://img.shields.io/npm/v/auth-verify.svg)](https://www.npmjs.com/package/auth-verify)
-[![GitHub stars](https://img.shields.io/github/stars/jahongir2007/auth-verify.svg?style=social)](https://github.com/jahongir2007/auth-verify)
+![npm downloads](https://img.shields.io/npm/dm/auth-verify.svg)
 
 ---
 
