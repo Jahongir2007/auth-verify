@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jahongir2007/auth-verify/main/assets/banner.png" alt="Auth Verify Banner" width="100%">
+</p>
 # Auth Verify 🔐  
 Modern and flexible authentication manager for Node.js —  
 with JWT, OTP, Redis, and Cookie support built in.
