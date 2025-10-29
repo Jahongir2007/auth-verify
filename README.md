@@ -18,7 +18,7 @@ with JWT, OTP, Redis, and Cookie support built in.
 - ⚡ Simple API: `auth.register.sender()` and `auth.use('email')`
 - 🧩 Multi-storage: memory, Redis, or cookie
 - 🔑 JWT manager with auto cookie mode
-- 📱 OTP via email, Telegram, or custom sender
+- 📱 OTP via email, Telegram, SMS or custom sender
 - 🧰 Extensible — add your own integrations easily
 
 ---
