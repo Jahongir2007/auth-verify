@@ -46,4 +46,4 @@ await auth.use("email").send({ to: "user@example.com" });
 const isValid = await auth.use("email").verify("123456");
 console.log(isValid ? "✅ Success" : "❌ Invalid");
 ```
-(For all documentation)[https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md] 
+[For all documentation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md) 
