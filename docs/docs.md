@@ -3,9 +3,10 @@
 **auth-verify** is a Node.js authentication utility that provides:
 - ✅ Secure OTP (one-time password) generation and verification
 - ✅ Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
+- ✅ TOTP (Time-based One Time Passwords) generation code and QR code and verification (Google Authenticator support)
 - ✅ JWT creation, verification and optional token revocation with memory/Redis storage
 - ✅ Session management (in-memory or Redis)
-- ✅ New: OAuth 2.0 integration for Google, Facebook, GitHub, and X (Twitter)
+- ✅ New: OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter) and Linkedin
 - ⚙️ Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
 ---
 
@@ -47,6 +48,20 @@ const auth = new AuthVerify({
 ---
 
 ## 🔐 JWT Usage
+
+### JWA Handling (New in v1.3.0) 
+
+You can choose json web algorithm for signing jwt
+```js
+const AuthVerify = require('auth-verify');
+const auth = new AuthVerify({ useAlg: 'HS512' }); // or 'HS256'
+
+(async ()=>{
+  const token = await auth.jwt.sign({userId: 123}, '30m');
+  console.log('token', token);
+})();
+```
+
 
 ```js
 // create JWT
@@ -202,7 +217,77 @@ auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
 `resend` returns the new code (promise style) or calls callback.
 
 ---
-## 🌍 OAuth 2.0 Integration (New in v1.2.0)
+
+## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support
+```js
+const AuthVerify = require("auth-verify");
+const auth = new AuthVerify();
+// Optionally:
+/*
+const AuthVerify = require("auth-verify");
+const auth = new AuthVerify({
+    totp: {
+      digits: 6 (default)
+      step: 30 (default)
+      alg: "SHA1" (default)
+    }
+});
+*/
+```
+You can change `digits`, `step`, `alg`.
+ - `digits`: how many digits your one-time password has **(Google Authenticator default = 6 digits)**
+ - `step`: how long each TOTP code lives in seconds **(Google Authenticator default = 30 seconds)**
+ - `alg`: the hashing algorithm used to generate the OTP **(Google Authenticator default = SHA1)**
+### Generate secret
+```js
+const secret = auth.totp.secret();
+console.log(secret); //base 32
+```
+### generate otpauth URI
+```js
+const uri = auth.totp.uri({
+  label: "user@example.com",
+  issuer: "AuthVerify",
+  secret
+});
+
+console.log(uri);
+```
+### generate QR code image
+(send this PNG to frontend or show in UI)
+```js
+const qr = await auth.totp.qrcode(uri);
+console.log(qr); // data:image/png;base64,...
+```
+### generate a TOTP code
+```js
+const token = auth.totp.generate(secret);
+console.log("TOTP:", token);
+```
+### verify a code entered by user
+```js
+const ok = auth.totp.verify({ secret, token });
+console.log(ok); // true or false
+```
+### example real flow
+```js
+// Register UI
+const secret = auth.totp.secret();
+const uri = auth.totp.uri({ label: "john@example.com", issuer: "AuthVerify", secret });
+const qr = await auth.totp.qrcode(uri);
+// show qr to user
+
+// Then user scans QR with Google Authenticator
+// Then user enters 6-digit code
+const token = req.body.code;
+
+// Verify
+if (auth.totp.verify({ secret, token })) {
+  // enable 2FA
+}
+```
+---
+## 🌍 OAuth 2.0 Integration (v1.2.0+)
 `auth.oauth` supports login via Google, Facebook, GitHub, X (Twitter) and Linkedin.
 ### Example (Google Login with Express)
 ```js
@@ -333,7 +418,7 @@ app.get("/auth/linkedin/callback", async (req, res)=>{
   try{
     const { code } = req.query;
     const user = await linkedin.callback(code);
-    res.json({ success: true, provider: "x", user });
+    res.json({ success: true, provider: "linkedin", user });
   }catch(err){
     res.status(400).json({ error: err.message });
   }
@@ -368,7 +453,7 @@ auth.register.sender('consoleOtp', async ({ to, code }) => {
 });
 
 // use it later (chainable)
-await auth.use('consoleOtp').send({ to: '+998901234567', code: await auth.otp.generate(5) });
+await auth.use('consoleOtp').send({ to: '+998901234567', code: await auth.otp.generate(5).code });
 ```
 
 ---
@@ -424,15 +509,25 @@ Notes:
 auth-verify/
 ├─ README.md
 ├─ package.json
+├─ index.js         // exports AuthVerify
 ├─ src/
-│  ├─ index.js         // exports AuthVerify
 │  ├─ jwt/
 |  |  ├─ index.js
 |  |  ├─ cookie/index.js
 │  ├─ /otp/index.js
+│  ├─ totp/
+|  |  ├─ index.js
+|  |  ├─ base32.js
 │  ├─ /session/index.js
 |  ├─ /oauth/index.js
 │  └─ helpers/helper.js
+├─ test/
+│  ├─ jwa.test.js
+│  ├─ jwtmanager.multitab.test.js
+│  ├─ jwtmanager.test.js
+│  ├─ otpmanager.test.js
+│  ├─ totpmanager.test.js
+├─ babel.config.js
 ```
 
 ---
