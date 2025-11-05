@@ -49,7 +49,7 @@ const auth = new AuthVerify({
 
 ## 🔐 JWT Usage
 
-### JWA Handling (New in v1.3.0) 
+### JWA Handling (v1.3.0+) 
 
 You can choose json web algorithm for signing jwt
 ```js
@@ -218,7 +218,7 @@ auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
 
 ---
 
-## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support
+## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support (New in v1.4.0)
 ```js
 const AuthVerify = require("auth-verify");
 const auth = new AuthVerify();
