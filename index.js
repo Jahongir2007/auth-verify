@@ -2,49 +2,51 @@ const JWTManager = require("./src/jwt");
 const OTPManager = require("./src/otp");
 const SessionManager = require("./src/session");
 const OAuthManager = require("./src/oauth");
+const TOTPManager = require("./src/totp");
 
 class AuthVerify {
   constructor(options = {}) {
-    const {
-      jwtSecret,
+    let {
+      jwtSecret = "jwt_secret",
+      cookieName = "jwt_token",
       otpExpiry = 300,
-      storeTokens = "none",
+      storeTokens = "memory",
       otpHash = "sha256",
       redisUrl,
+      useAlg,
+      totp = {
+        digits: 6,
+        step: 30,
+        alg: "SHA1"
+      }
     } = options;
 
-    if (!jwtSecret) throw new Error("jwtSecret is required in AuthVerify options");
+    // ✅ Ensure cookieName and secret always exist
+    this.cookieName = cookieName;
+    this.jwtSecret = jwtSecret;
 
-    this.senderName;
-    this.jwt = new JWTManager(jwtSecret, { storeTokens });
+    // ✅ Pass both into JWTManager
+    this.jwt = new JWTManager(jwtSecret, {
+      storeTokens,
+      cookieName,
+      useAlg
+    });
+
     this.otp = new OTPManager({
       storeTokens,
       otpExpiry,
       otpHash,
       redisUrl,
     });
+
     this.session = new SessionManager({ storeTokens, redisUrl });
+    this.oauth = new OAuthManager();
+    this.totp = new TOTPManager(totp);
 
     this.senders = new Map();
-    // this.register = {
-    //   sender: (name, fn)=>{
-    //     if (!name || typeof fn !== "function") {
-    //       throw new Error("Sender registration requires a name and a function");
-    //     }else{
-    //       try{
-    //         this.senders.set(name, fn);
-    //       }catch(err){
-    //         throw new Error(err);
-    //       }
-    //     }
-    //   }
-    // }
-    // ✅ No getters — directly reference otp.dev (it's a plain object)
-
-    this.oauth = new OAuthManager();
   }
-  
-  // Session helpers
+
+  // --- Session helpers ---
   async createSession(userId, options = {}) {
     return this.session.create(userId, options);
   }
@@ -57,33 +59,23 @@ class AuthVerify {
     return this.session.destroy(sessionId);
   }
 
-  async use(name){
+  // --- Sender registration ---
+  register = {
+    sender: (name, fn) => {
+      if (!name || typeof fn !== "function") {
+        throw new Error("Sender registration requires a name and a function");
+      }
+      this.senders.set(name, fn);
+    },
+  };
+
+  use(name) {
     const senderFn = this.senders.get(name);
-    if(!senderFn) throw new Error(`Sender "${name}" not found`);
-    this.senderName = senderFn;
-  }
-
-    register = {
-        sender: (name, fn) => {
-            if (!name || typeof fn !== "function") {
-                throw new Error("Sender registration requires a name and a function");
-            }
-            this.senders.set(name, fn);
-            // console.log(`✅ Sender registered: ${name}`);
-        }
+    if (!senderFn) throw new Error(`Sender "${name}" not found`);
+    return {
+      send: async (options) => await senderFn(options),
     };
-
-    // use a sender by name
-    use(name) {
-        const senderFn = this.senders.get(name);
-        if (!senderFn) throw new Error(`Sender "${name}" not found`);
-
-        return {
-            send: async (options) => {
-                return await senderFn(options); // call user function
-            }
-        };
-    }
+  }
 }
 
 module.exports = AuthVerify;
