@@ -25,11 +25,11 @@ npm install auth-verify
 ## ⚙️ Quick overview
 
 - `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, (optionally) `.session`, `.totp` and `.oauth` managers.
-- `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"`.
+- `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"` and middleware with custom cookie, header, and token extraction.
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
 - `TOTPManager`: generate, verify uri, codes and QR codes
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
-- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X and Linkedin
+- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X, Linkedin, Apple, Discord, Slack, Microsoft, Telegram and WhatsApp
 ---
 
 ## 🚀 Example: Initialize library (CommonJS)
@@ -49,6 +49,108 @@ const auth = new AuthVerify({
 ---
 
 ## 🔐 JWT Usage
+
+### JWT Middleware (`protect`) (New in v1.5.0) 
+
+auth-verify comes with a fully customizable JWT middleware, making it easy to **protect routes**, **attach decoded data to the request**, and **check user roles**.
+
+#### ⚙️ `protect` Method Overview
+
+Function signature:
+```js
+protect(options = {})
+```
+**Description**:
+ - Returns an Express-style middleware.
+ - Automatically reads JWT from cookie, header, or custom extractor.
+ - Verifies the token and optionally checks for roles.
+ - Attaches the decoded payload to req (default property: req.user).
+
+| Option           | Type     | Default           | Description                                                                            |
+| ---------------- | -------- | ----------------- | -------------------------------------------------------------------------------------- |
+| `onError`        | Function | `null`            | Custom error handler. `(err, req, res)`                                                |
+| `attachProperty` | String   | `"user"`          | Where to attach decoded token payload on `req`                                         |
+| `requiredRole`   | String   | `null`            | Optional role check. Throws error if decoded role does not match                       |
+| `cookieName`     | String   | `this.cookieName` | Name of the cookie to read JWT from                                                    |
+| `headerName`     | String   | `"authorization"` | Header name to read JWT from. `"authorization"` splits `Bearer TOKEN` automatically    |
+| `extractor`      | Function | `null`            | Custom function to extract token. Receives `req` as argument and must return the token |
+
+#### Middleware Behavior
+
+1. **Token extraction order:**
+  - First: `extractor(req)` if provided
+  - Second: `req.headers[headerName]` (for `authorization`, splits `Bearer TOKEN`)
+  - Third: `cookieName` from request cookies
+2. **Verification**:
+  - Calls `this.verify(token)`
+  - Throws `NO_TOKEN` if no token is found
+  - Throws `ROLE_NOT_ALLOWED` if `requiredRole`is provided but decoded role does not match
+3. **Attachment**:
+  - Decoded token is attached to `req[attachProperty]`
+4. **Error handling**:
+  - Default: responds with `401` and JSON `{ success: false, error: err.message }`
+  - Custom: if `onError` is provided, it is called instead of default behavior
+
+#### Example Usage
+##### Basic Usage
+```js
+const express = require("express");
+const AuthVerify = require("auth-verify");
+const app = express();
+
+const auth = new AuthVerify({ jwtSecret: "supersecret" });
+
+// Protect route
+app.get("/dashboard", auth.jwt.protect(), (req, res) => {
+  // req.user contains decoded JWT payload
+  res.json({ message: `Welcome, ${req.user.userId}` });
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
+```
+
+##### Custom Cookie & Header
+```js
+app.get("/profile", auth.jwt.protect({
+  cookieName: "myToken",
+  headerName: "x-access-token"
+}), (req, res) => {
+  res.json({ user: req.user });
+});
+```
+  - JWT will be read from the cookie named `"myToken"` or from the header `"x-access-token"`.
+
+#### Role-based Guard
+```js
+app.get("/admin", auth.jwt.protect({
+  requiredRole: "admin"
+}), (req, res) => {
+  res.json({ message: "Welcome Admin" });
+});
+``` 
+  - Throws error if decoded token does not have role: `"admin"`.
+
+#### Custom Token Extractor
+```js
+app.get("/custom", auth.jwt.protect({
+  extractor: (req) => req.query.token
+}), (req, res) => {
+  res.json({ user: req.user });
+});
+```
+  - Allows you to read token from any custom location (e.g., query params).
+
+#### Custom Error Handler
+```js
+app.get("/custom-error", auth.jwt.protect({
+  onError: (err, req, res) => {
+    res.status(403).json({ error: "Access denied", details: err.message });
+  }
+}), (req, res) => {
+  res.json({ user: req.user });
+});
+```
+  - Overrides default `401` response with custom logic.
 
 ### JWA Handling (v1.3.0+) 
 
@@ -194,7 +296,20 @@ auth.otp.generate(6).set('user@example.com', (err) => {
     else console.log('sent', info && info.messageId);
   });
 });
+
+// Sending OTP with SMS
+auth.otp.generate(6).set('+1234567890', (err) => {
+  if (err) throw err;
+  auth.otp.message({
+    to: '+1234567890',
+    text: `Your code: <b>${auth.otp.code}</b>`
+  }, (err, info) => {
+    if (err) console.error('send error', err);
+    else console.log('sent', info && info.messageId);
+  });
+});
 ```
+`+1234567890` is reciever number
 
 Async/await style:
 
