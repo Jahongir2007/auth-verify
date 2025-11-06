@@ -355,7 +355,7 @@ auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
 
 ---
 
-## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support (New in v1.4.0)
+## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support (v1.4.0+)
 ```js
 const AuthVerify = require("auth-verify");
 const auth = new AuthVerify();
