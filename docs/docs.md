@@ -24,9 +24,10 @@ npm install auth-verify
 
 ## ⚙️ Quick overview
 
-- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, (optionally) `.session` and `.oauth` managers.
+- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, (optionally) `.session`, `.totp` and `.oauth` managers.
 - `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"`.
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
+- `TOTPManager`: generate, verify uri, codes and QR codes
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
 - `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X and Linkedin
 ---
@@ -144,8 +145,26 @@ auth.otp.setSender({
 auth.otp.setSender({
   via: 'sms',
   provider: 'infobip',
-  apiKey: 'xxx',
-  apiSecret: 'yyy',
+  apiKey: 'API_KEY',
+  apiSecret: 'API_SECRET',
+  sender: 'SENDER_NAME',
+  mock: true // in dev prints message instead of sending
+});
+
+auth.otp.setSender({
+  via: 'sms',
+  provider: 'twilio',
+  apiKey: 'ACCOUNT_SID',
+  apiSecret: 'AUTH_TOKEN',
+  sender: 'SENDER_NAME',
+  mock: true // in dev prints message instead of sending
+});
+
+auth.otp.setSender({
+  via: 'sms',
+  provider: 'vonage',
+  apiKey: 'API_KEY',
+  apiSecret: 'API_SECRET',
   sender: 'SENDER_NAME',
   mock: true // in dev prints message instead of sending
 });
