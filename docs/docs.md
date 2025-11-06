@@ -1,13 +1,16 @@
 # auth-verify
 
 **auth-verify** is a Node.js authentication utility that provides:
-- ✅ Secure OTP (one-time password) generation and verification
-- ✅ Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot
-- ✅ TOTP (Time-based One Time Passwords) generation code and QR code and verification (Google Authenticator support)
-- ✅ JWT creation, verification and optional token revocation with memory/Redis storage
-- ✅ Session management (in-memory or Redis)
-- ✅ New: OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter) and Linkedin
-- ⚙️ Developer extensibility: custom senders and `auth.register.sender()` / `auth.use(name).send(...)`
+  - ✅ Secure OTP (one-time password) generation and verification.
+  - ✅ Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot.
+  - ✅ TOTP (Time-based One Time Passwords) generation, QR code generation, and verification (Google Authenticator support).
+  - ✅ JWT creation, verification, optional token revocation with memory/Redis storage, and advanced middleware for protecting routes, custom cookie/header handling, role-based guards, and token extraction from custom sources.
+  - ✅ Session management (in-memory or Redis).
+  - ✅ OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter), Linkedin, and additional providers like Apple, Discord, Slack, Microsoft, Telegram,and WhatsApp.
+  - ⚙️ Developer extensibility: custom senders via auth.register.sender() and chainable sending via auth.use(name).send(...).
+  - ✅ Automatic JWT cookie handling for Express apps, supporting secure, HTTP-only cookies and optional auto-verification.
+  - ✅ Fully asynchronous/Promise-based API, with callback support where applicable.
+  - ✅ Chainable OTP workflow with cooldowns, max attempts, and resend functionality.
 ---
 
 ## 🧩 Installation
