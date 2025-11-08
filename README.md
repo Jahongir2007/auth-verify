@@ -19,7 +19,9 @@ with JWT, OTP, Redis, and Cookie support built in.
 - 🧩 Multi-storage: memory, Redis, or cookie
 - 🔑 JWT manager with auto cookie mode
 - 📱 OTP via email, Telegram, SMS or custom sender
-- 🔢 TOTP code and QR code generation and verification 
+- 🔢 TOTP code and QR code generation and verification
+- 🗝️ Passwordless login & registration with passkey/webauthn
+- 🌎 Oauth 2.0 integration with providers
 - 🧰 Extensible — add your own integrations easily
 
 ---
