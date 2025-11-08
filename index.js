@@ -3,6 +3,7 @@ const OTPManager = require("./src/otp");
 const SessionManager = require("./src/session");
 const OAuthManager = require("./src/oauth");
 const TOTPManager = require("./src/totp");
+const PasskeyManager = require("./src/passkey");
 
 class AuthVerify {
   constructor(options = {}) {
@@ -18,7 +19,10 @@ class AuthVerify {
         digits: 6,
         step: 30,
         alg: "SHA1"
-      }
+      },
+      rpName = "auth-verify",
+      saveBy = "id",
+      passExp = "2m"
     } = options;
 
     // ✅ Ensure cookieName and secret always exist
@@ -44,6 +48,8 @@ class AuthVerify {
     this.totp = new TOTPManager(totp);
 
     this.senders = new Map();
+
+    this.passkey = new PasskeyManager({rpName, storeTokens, saveBy, passExp});
   }
 
   // --- Session helpers ---
@@ -57,6 +63,19 @@ class AuthVerify {
 
   async destroySession(sessionId) {
     return this.session.destroy(sessionId);
+  }
+
+  // --- Passkey helpers ---
+  async registerPasskey(user) {
+    return this.passkey.register(user);
+  }
+
+  async finishPasskey(clientResponse) {
+    return this.passkey.finish(clientResponse);
+  }
+
+  async loginPasskey(user) {
+    return this.passkey.login(user);
   }
 
   // --- Sender registration ---
