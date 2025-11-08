@@ -9,6 +9,7 @@
   - ✅ OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter), Linkedin, and additional providers like Apple, Discord, Slack, Microsoft, Telegram,and WhatsApp.
   - ⚙️ Developer extensibility: custom senders via `auth.register.sender()` and chainable sending via `auth.use(name).send(...)`.
   - ✅ Automatic JWT cookie handling for Express apps, supporting secure, HTTP-only cookies and optional auto-verification.
+  - ✅ Passwordless login and registration with passkeys and webauthn.
   - ✅ Fully asynchronous/Promise-based API, with callback support where applicable.
   - ✅ Chainable OTP workflow with cooldowns, max attempts, and resend functionality.
 ---
