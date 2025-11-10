@@ -8,6 +8,7 @@
   - ✅ Session management (in-memory or Redis).
   - ✅ OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter), Linkedin, and additional providers like Apple, Discord, Slack, Microsoft, Telegram,and WhatsApp.
   - ⚙️ Developer extensibility: custom senders via `auth.register.sender()` and chainable sending via `auth.use(name).send(...)`.
+  - ✅ Frontend client SDK (`authverify.client.js`) for browser usage: QR display, OTP verification, JWT requests, and auth headers; works without modules, just `<script>`.
   - ✅ Automatic JWT cookie handling for Express apps, supporting secure, HTTP-only cookies and optional auto-verification.
   - ✅ Passwordless login and registration with passkeys and webauthn.
   - ✅ Fully asynchronous/Promise-based API, with callback support where applicable.
@@ -248,6 +249,15 @@ auth.otp.setSender({
   // if smtp service: host, port, secure (boolean)
 });
 
+// or you can use sender() method
+// auth.otp.sender({
+//   via: 'email',
+//   sender: 'your@address.com',
+//   pass: 'app-password-or-smtp-pass',
+//   service: 'gmail' // or 'smtp'
+//   // if smtp service: host, port, secure (boolean)
+// });
+
 // sms example (the internal helper expects provider/apiKey or mock flag)
 auth.otp.setSender({
   via: 'sms',
@@ -284,6 +294,21 @@ auth.otp.setSender({
 });
 ```
 
+### 🛫 Simple and easy sending OTP codes
+
+OTP codes can be simply and easily sent by `send()` method.
+
+```js
+auth.otp.send('johndoe@mail.com', {otpLen: 5, subject: "Email verification", html: `Your OTP code is ${auth.otp.code}`}, (err)=>{
+  if(err) console.log(err)
+  console.log('OTP sent!');
+});
+```
+or you can simple use it like this:
+```js
+auth.otp.send('johndoe@mail.com');
+```
+ 
 ### ⛓️ Generate → Save → Send (chainable)
 
 OTP generation is chainable: `generate()` returns the OTP manager instance.
@@ -345,6 +370,13 @@ auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
   if(isValid) console.log('Correct code!');
   else console.log('Incorrect code!');
 });
+
+// or you can use it like this:
+// auth.otp.verify('user@example.com','123456', (err, isValid)=>{
+//   if(err) console.log(err);
+//   if(isValid) console.log('Correct code!');
+//   else console.log('Incorrect code!');
+// });
 ```
 
 ### Resend and cooldown / max attempts
@@ -541,7 +573,7 @@ console.log(uri);
 ### generate QR code image
 (send this PNG to frontend or show in UI)
 ```js
-const qr = await auth.totp.qrcode(uri);
+const qr = await auth.totp.qrcode(uri); // or you can use await auth.totp.qr(uri);
 console.log(qr); // data:image/png;base64,...
 ```
 ### generate a TOTP code
@@ -572,6 +604,112 @@ if (auth.totp.verify({ secret, token })) {
 }
 ```
 ---
+
+## auth-verify client
+### 1️⃣ Introduction
+
+**AuthVerify Client** is a lightweight frontend JavaScript library for TOTP / JWT authentication.
+It works with your backend APIs to:
+ - Display QR codes for TOTP enrollment
+ - Verify user OTP codes
+ - Request JWT tokens from backend
+ - Send authenticated requests easily
+
+Works like jQuery: just include the script in HTML, no module or bundler needed.
+
+## 2️⃣ Installation
+```html
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+```
+
+### 3️⃣ Initialization
+```js
+const qrImage = document.getElementById('qrImage');
+
+const auth = new AuthVerify({
+  apiBase: 'http://localhost:3000',  // Your backend API base URL
+  qrEl: qrImage                       // Image element to display QR
+});
+```
+
+### 4️⃣ Generating QR Code
+```js
+auth.get('/api/qr').qr();
+```
+ - Fetches QR code from backend
+ - Displays it in the `qrEl` image element
+
+### 5️⃣ Sending Data / JWT Requests
+```js
+const payload = { name: 'John', age: 23 };
+
+const token = await auth.post('/api/sign-jwt').data(payload);
+console.log('JWT token:', token);
+```
+ - `post(url)` sets endpoint
+ - `data(payload)` sends JSON payload
+ - If backend returns a token, it is stored in `auth.jwt`
+
+### 6️⃣ Verifying OTP
+```js
+const result = await auth.post('/api/verify-totp').verify('123456');
+console.log(result); // e.g. { verified: true }
+```
+ - Wraps the OTP code in `{ code: '...' }`
+ - Sends to backend for verification
+
+### 7️⃣ Sending Authenticated Requests
+```js
+const profile = await fetch('http://localhost:3000/api/profile', {
+  headers: auth.header()
+}).then(res => res.json());
+
+console.log(profile);
+```
+ - `auth.header()` returns `{ Authorization: "Bearer <jwt>" }`
+ - Easy to attach JWT to any request
+
+### 8️⃣ Method Summary
+| Method          | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `get(url)`      | Set GET endpoint                                |
+| `post(url)`     | Set POST endpoint                               |
+| `qr()`          | Fetch QR from backend and display               |
+| `data(payload)` | Send payload to backend; stores JWT if returned |
+| `verify(code)`  | Send OTP code to backend                        |
+| `header()`      | Return JWT auth header object                   |
+
+### 9️⃣ Example HTML
+```html
+<img id="qrImage" />
+<div id="response"></div>
+<button id="getQRBtn">Get QR</button>
+<button id="sendBtn">Send Data</button>
+
+<script src="authverify.client.js"></script>
+<script>
+const qrImage = document.getElementById('qrImage');
+const responseDiv = document.getElementById('response');
+
+const auth = new AuthVerify({ apiBase: 'http://localhost:3000', qrEl: qrImage });
+
+document.getElementById('getQRBtn').addEventListener('click', () => auth.get('/api/qr').qr());
+
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const payload = { name: 'Jahongir' };
+  const result = await auth.post('/api/sign-jwt').data(payload);
+  responseDiv.textContent = JSON.stringify(result, null, 2);
+});
+</script>
+```
+
+### 10️⃣ Tips for Developers
+ - Always call `auth.get('/api/qr').qr()` **after page loads**
+ - Use `auth.header()` for any authenticated request
+ - Backend must provide endpoints for `/api/qr`, `/api/verify-totp`, `/api/sign-jwt`
+
+---
+
 ## 🌍 OAuth 2.0 Integration (v1.2.0+)
 `auth.oauth` supports login via Google, Facebook, GitHub, X (Twitter), Linkedin, Microsoft, Telegram, Slack, WhatsApp, Apple and Discord.
 ### Providers & Routes table
@@ -918,6 +1056,7 @@ auth-verify/
 │  ├─ totpmanager.test.js
 │  ├─ passkeymanager.test.js
 ├─ babel.config.js
+├─ authverify.client.js
 ```
 
 ---
