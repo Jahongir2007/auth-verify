@@ -23,6 +23,7 @@ with JWT, OTP, Redis, and Cookie support built in.
 - 🗝️ Passwordless login & registration with passkey/webauthn
 - 🌎 Oauth 2.0 integration with providers
 - 🧰 Extensible — add your own integrations easily
+- 🔗 Frontend integration for creating QR codes of TOTP and verifying OTP codes and sending data for backend
 
 ---
 
