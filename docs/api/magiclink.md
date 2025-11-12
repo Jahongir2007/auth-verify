@@ -55,7 +55,7 @@ console.log(token);
 }
 ```
 
-### 3. send(email, [mailOptions], [callback])
+### 3. `send(email, [mailOptions], [callback])`
 Generates a magic link, sends it via email, and stores it in memory or Redis.
 #### Parameters:
 | Name          | Type                    | Description                          |
