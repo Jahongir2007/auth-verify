@@ -8,7 +8,7 @@
   - ✅ Session management (in-memory or Redis).
   - ✅ OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter), Linkedin, and additional providers like Apple, Discord, Slack, Microsoft, Telegram,and WhatsApp.
   - ⚙️ Developer extensibility: custom senders via `auth.register.sender()` and chainable sending via `auth.use(name).send(...)`.
-  - ✅ Frontend client SDK (`authverify.client.js`) for browser usage: QR display, OTP verification, JWT requests, and auth headers; works without modules, just `<script>`.
+  - ✅ Frontend client SDK (`authverify.client.js`) for browser usage: QR display, OTP verification, JWT requests, auth headers, generting passkey and sending it backend; works without modules, just `<script>`.
   - ✅ Automatic JWT cookie handling for Express apps, supporting secure, HTTP-only cookies and optional auto-verification.
   - ✅ Passwordless login and registration with passkeys and webauthn.
   - ✅ Fully asynchronous/Promise-based API, with callback support where applicable.
@@ -389,7 +389,7 @@ auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
 
 ---
 
-## 🗝️ Passkey (WebAuthn) (New in v1.6.1)
+## 🗝️ Passkey (WebAuthn) (v1.6.1+)
 
 `AuthVerify` includes a `PasskeyManager` class to handle passwordless login using WebAuthn / passkeys. You can **register** users, **verify login**, and manage **challenges** safely.
 
@@ -583,7 +583,7 @@ console.log("TOTP:", token);
 ```
 ### verify a code entered by user
 ```js
-const ok = auth.totp.verify({ secret, token });
+const ok = auth.totp.verify(secret, token);
 console.log(ok); // true or false
 ```
 ### example real flow
@@ -599,7 +599,7 @@ const qr = await auth.totp.qrcode(uri);
 const token = req.body.code;
 
 // Verify
-if (auth.totp.verify({ secret, token })) {
+if (auth.totp.verify(secret, token )) {
   // enable 2FA
 }
 ```
@@ -614,7 +614,10 @@ It works with your backend APIs to:
  - Verify user OTP codes
  - Request JWT tokens from backend
  - Send authenticated requests easily
-
+ - **Register a passkey** (create a new credential)
+ - **Login with a passkey** (authenticate existing credential)
+ - Handle **Base64URL decoding**, **ArrayBuffer conversion**, and **backend communication** automatically
+ - Easily integrate with your Node.js backend using `auth-verify`
 Works like jQuery: just include the script in HTML, no module or bundler needed.
 
 ## 2️⃣ Installation
@@ -669,15 +672,63 @@ console.log(profile);
  - `auth.header()` returns `{ Authorization: "Bearer <jwt>" }`
  - Easy to attach JWT to any request
 
+### Passkey part (new in v1.8.0)
+#### API Methods
+##### `start(route)`
+Sets the backend endpoint to start a **registration or login flow**.
+```js
+auth.start('/api/register/start');  // registration start
+auth.start('/api/login/start');     // login start
+```
+
+#### `finish(route)`
+Sets the backend endpoint to **finish the flow** (verify credential/assertion).
+```js
+auth.finish('/api/register/finish'); // registration finish
+auth.finish('/api/login/finish');    // login finish
+```
+
+#### `registerPasskey(user)`
+Registers a new passkey for the user.
+##### Parameters:
+| Param | Type   | Description                                                            |
+| ----- | ------ | ---------------------------------------------------------------------- |
+| user  | Object | `{ id: "user1", username: "john_doe" }` — user info to send to backend |
+
+##### Returns:
+`Promise<Object>` — result from backend (`{ success: true/false, message: "..." }`)
+##### Example:
+```js
+auth.start('/api/register/start').finish('/api/register/finish');
+
+const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
+
+if(result.success) alert("Passkey registered!");
+else alert("Error: " + result.message);
+```
+
+##### What it does internally:
+1. Calls `/start` endpoint → gets assertion options.
+2. Decodes `challenge` and `allowCredentials[].id` from Base64URL → Uint8Array.
+3. Calls `navigator.credentials.get({ publicKey })`.
+4. Converts ArrayBuffers to Base64.
+5. Sends assertion to `/finish` endpoint for verification.
+#### `base64urlToUint8Array(base64url)`
+Helper to convert Base64URL string to `Uint8Array`.
+Used internally in registration & login flow. Devs can use it for custom WebAuthn handling if needed.
 ### 8️⃣ Method Summary
-| Method          | Description                                     |
-| --------------- | ----------------------------------------------- |
-| `get(url)`      | Set GET endpoint                                |
-| `post(url)`     | Set POST endpoint                               |
-| `qr()`          | Fetch QR from backend and display               |
-| `data(payload)` | Send payload to backend; stores JWT if returned |
-| `verify(code)`  | Send OTP code to backend                        |
-| `header()`      | Return JWT auth header object                   |
+| Method                  | Description                                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `get(url)`              | Set GET endpoint                                                                               |
+| `post(url)`             | Set POST endpoint                                                                              |
+| `qr()`                  | Fetch QR from backend and display                                                              |
+| `data(payload)`         | Send payload to backend; stores JWT if returned                                                |
+| `verify(code)`          | Send OTP code to backend                                                                       |
+| `header()`              | Return JWT auth header object                                                                  |
+| `start(route)`          | Set backend endpoint to **start registration or login**                                        |
+| `finish(route)`         | Set backend endpoint to **finish registration or login**                                       |
+| `registerPasskey(user)` | Full registration flow: fetch challenge, decode, create credential in browser, send to backend |
+| `loginPasskey(user)`    | Full login flow: fetch assertion, decode, get credential from browser, send to backend         |
 
 ### 9️⃣ Example HTML
 ```html
@@ -686,7 +737,7 @@ console.log(profile);
 <button id="getQRBtn">Get QR</button>
 <button id="sendBtn">Send Data</button>
 
-<script src="authverify.client.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
 <script>
 const qrImage = document.getElementById('qrImage');
 const responseDiv = document.getElementById('response');
@@ -703,10 +754,50 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
 </script>
 ```
 
+### Passkey example
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AuthVerify Demo</title>
+</head>
+<body>
+  <h1>AuthVerify Passkey Demo</h1>
+  <button id="register">Register Passkey</button>
+  <button id="login">Login with Passkey</button>
+
+  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+  <script>
+    const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+
+    // Registration setup
+    auth.start('/api/register/start').finish('/api/register/finish');
+    document.getElementById('register').addEventListener('click', async () => {
+      const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
+      alert(result.message);
+    });
+
+    // Login setup
+    auth.start('/api/login/start').finish('/api/login/finish');
+    document.getElementById('login').addEventListener('click', async () => {
+      const result = await auth.loginPasskey({ id: 'user1', username: 'john_doe' });
+      alert(result.message);
+    });
+  </script>
+</body>
+</html>
+```
+✅ Fully functional frontend passkey demo
+✅ One line registration / login for devs
+✅ Automatic Base64URL decoding and ArrayBuffer handling
+
 ### 10️⃣ Tips for Developers
  - Always call `auth.get('/api/qr').qr()` **after page loads**
  - Use `auth.header()` for any authenticated request
  - Backend must provide endpoints for `/api/qr`, `/api/verify-totp`, `/api/sign-jwt`
+ - Make sure backend endpoints return **raw WebAuthn options** (`challenge`, `user`, `allowCredentials`) in **Base64URL format**.
+ - `user.id` and `challenge` must be **Base64URL encoded** on backend.
+ - JWT storage is automatic if backend returns **token**.
 
 ---
 
@@ -956,6 +1047,164 @@ app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PO
   ```
 ---
 
+## 💌 Magiclink (Passwordless login) (New in v1.8.0)
+The **Magic Link Manager** allows developers to implement **secure**, **passwordless login** using **email-based links**.
+Built directly into the AuthVerify SDK, it supports **Gmail**, **custom SMTP**, and token storage via **Memory** or **Redis**.
+
+### 🚀 Basic Setup
+```js
+const AuthVerify = require('auth-verify');
+
+const auth = new AuthVerify({
+  mlSecret: 'super_secret_key',
+  mlExp: '5m',
+  appUrl: 'http://localhost:3000',
+  storeTokens: 'memory'
+});
+```
+
+### ⚙️ Configure Magic Link Sender
+Before sending links, you must set up your email transport.
+#### Gmail Example
+```js
+await auth.magic.sender({
+  service: 'gmail',
+  sender: 'yourapp@gmail.com',
+  pass: 'your_gmail_app_password'
+});
+```
+
+#### Custom SMTP Example
+```js
+await auth.magic.sender({
+  host: 'smtp.mailgun.org',
+  port: 587,
+  secure: false,
+  sender: 'noreply@yourdomain.com',
+  pass: 'your_smtp_password'
+});
+```
+> ✅ Both Gmail and any SMTP provider are supported.
+> Use app passwords or tokens instead of your real password!
+
+### 📩 Send Magic Link
+Send a secure, expiring link to the user’s email:
+```js
+await auth.magic.send('user@example.com', {
+  subject: 'Your Secure Login Link ✨',
+  html: `<p>Click below to sign in:</p>
+         <a href="{{link}}">Login Now</a>`
+});
+```
+> The `{{link}}` placeholder will automatically be replaced with the generated magic link.
+
+### 🪄 Generate Magic Link Manually
+If you just want to create a link (not send it yet):
+```js
+const token = await auth.magic.generate('user@example.com');
+console.log(token);
+```
+Then make your own URL:
+```js
+const link = `http://localhost:3000/auth/verify?token=${token}`;
+```
+
+### 🔐 Verify Magic Link
+Typically used in your backend `/auth/verify` route:
+```js
+app.get('/auth/verify', async (req, res) => {
+  const { token } = req.query;
+  try {
+    const user = await auth.magic.verify(token);
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+```
+
+### 🧠 How It Works
+1. `auth.magic.generate()` → creates a short-lived JWT with the user’s email.
+2. `auth.magic.send()` → sends a secure login link by email.
+3. `auth.magic.verify()` → decodes & validates the token, optionally checks store.
+
+### 💾 Storage Options
+| Mode               | Description          | Best For                       |
+| ------------------ | -------------------- | ------------------------------ |
+| `memory` (default) | Uses in-memory Map() | Single server / small projects |
+| `redis`            | Uses Redis with TTL  | Scalable, multi-server apps    |
+
+Example using Redis:
+```js
+const auth = new AuthVerify({
+  storeTokens: 'redis',
+  redisUrl: 'redis://localhost:6379'
+});
+```
+
+### 🧰 Callback Support
+You can also use Node-style callbacks if you prefer:
+```js
+auth.magic.send('user@example.com', (err) => {
+  if (err) console.error('❌ Failed to send link:', err);
+  else console.log('✅ Magic link sent!');
+});
+```
+
+### 🌍 Example Express Integration
+```js
+const express = require('express');
+const bodyParser = require('body-parser');
+const { AuthVerify } = require('auth-verify');
+
+const app = express();
+app.use(bodyParser.json());
+
+const auth = new AuthVerify({
+  mlSecret: 'supersecretkey',
+  appUrl: 'http://localhost:3000',
+  storeTokens: 'memory'
+});
+
+auth.magic.sender({
+  service: 'gmail',
+  sender: 'yourapp@gmail.com',
+  pass: 'your_app_password'
+});
+
+// Send link
+app.post('/auth/send', async (req, res) => {
+  const { email } = req.body;
+  await auth.magic.send(email);
+  res.json({ message: 'Magic link sent!' });
+});
+
+// Verify link
+app.get('/auth/verify', async (req, res) => {
+  try {
+    const user = await auth.magic.verify(req.query.token);
+    res.json({ message: 'Login successful!', user });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.listen(3000, () => console.log('🚀 Server running on port 3000'));
+```
+
+### 🧾 Summary
+| Feature                    | Supported |
+| -------------------------- | --------- |
+| Gmail & SMTP               | ✅         |
+| Memory & Redis Token Store | ✅         |
+| Token Expiry               | ✅         |
+| Callback & Promise APIs    | ✅         |
+| HTML Custom Email          | ✅         |
+
+### ⚡ Future Vision
+`auth.magic` is built for **modern SaaS**, **fintech**, and **crypto** apps that need **passwordless**, **secure**, and **user-friendly** authentication.
+---
+
 ## Telegram integration
 
 There are two ways to use Telegram flow:
@@ -1041,6 +1290,7 @@ auth-verify/
 |  |  ├─ index.js
 |  |  ├─ cookie/index.js
 │  ├─ /otp/index.js
+│  ├─ /magiclink/index.js
 │  ├─ totp/
 |  |  ├─ index.js
 |  |  ├─ base32.js
