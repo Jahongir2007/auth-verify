@@ -135,6 +135,6 @@ app.get("/auth/verify", async (req, res) => {
 });
 ```
 ### 🧠 Notes
-Tokens are **single-use**: once verified, they are deleted.
-Supports both **callback** and **Promise-based** syntax.
-You can use the result to generate a JWT session or cookie with your `JWTManager`.
+ - Tokens are **single-use**: once verified, they are deleted.
+ - Supports both **callback** and **Promise-based** syntax.
+ - You can use the result to generate a JWT session or cookie with your `JWTManager`.
