@@ -27,6 +27,8 @@ After initialization, the JWT system is accessible via `auth.jwt`.
 | `auth.jwt.isRevoked(token)`                 | Checks whether a token has been revoked                      |
 | `auth.jwt.protect(options?)`                | Express middleware to protect API routes                     |
 | `auth.jwt.readCookie(req, name)`            | Reads a JWT from cookies manually                            |
+| `auth.jwt.issue(user)`                      | Issues an **access token** and a **refresh token**           |
+| `auth.jwt.refresh(refreshToken)`            | Refreshes an **access token** using a valid refresh token    |
 
 ### 🪄 `auth.jwt.sign(payload, expiry?, options?)`
 Signs a new JWT token.
@@ -73,6 +75,39 @@ const data = await auth.jwt.decode(token);
 ```
 **Returns:** Decoded object or `null`.
 
+### 🧩 `auth.jwt.issue(user)`
+Issues a new access token and a refresh token for a user.
+```js
+const { accessToken, refreshToken } = auth.jwt.issue({ id: 'user_123' });
+```
+ - **Access token:** short-lived, used for authentication.
+ - **Refresh token:** long-lived, used to get a new access token without logging in again.
+
+**Parameters:**
+| Name | Type   | Description                    |
+| ---- | ------ | ------------------------------ |
+| user | object | User object with `id` property |
+**Returns:**
+```js
+{ accessToken: string, refreshToken: string }
+```
+
+### 🔄 `auth.jwt.refresh(refreshToken)`
+Refreshes an **access token** using a valid **refresh token**.
+```js
+const newTokens = auth.jwt.refresh(refreshToken);
+```
+ - Validates the refresh token.
+ - Issues a new access token and refresh token pair.
+ - Throws an error if the token is invalid or expired.
+**Parameters:**
+| Name         | Type   | Description                  |
+| ------------ | ------ | ---------------------------- |
+| refreshToken | string | A valid refresh token string |
+**Returns:**
+```js
+{ accessToken: string, refreshToken: string }
+```
 ### ❌ `auth.jwt.revoke(token, revokeTime?)`
 Revokes a token immediately or after a specified duration.
 ```js
@@ -83,7 +118,7 @@ If using:
  - `memory`: the token is removed from internal store.
  - `redis`: the key is deleted or set to expire.
 
-### 🚫 auth.jwt.isRevoked(token)
+### 🚫 `auth.jwt.isRevoked(token)`
 
 Checks if a token is revoked (missing in memory or Redis).
 ```js
