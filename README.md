@@ -21,6 +21,7 @@ AuthVerify is a modular authentication library for Node.js, providing JWT, OTP, 
 - 📱 OTP via email, Telegram, SMS or custom sender
 - 🔢 TOTP code and QR code generation and verification
 - 🗝️ Passwordless login & registration with passkey/webauthn
+- 💌 Magiclink for passwordless logins
 - 🌎 Oauth 2.0 integration with providers
 - 🧰 Extensible — add your own integrations easily
 - 🔗 Frontend integration for creating QR codes of TOTP and verifying OTP codes and sending data for backend
