@@ -1,18 +1,17 @@
 # auth-verify
 
-**auth-verify** is a Node.js authentication utility that provides:
-  - ✅ Secure OTP (one-time password) generation and verification.
-  - ✅ Sending OTPs via Email, SMS (pluggable helpers), and Telegram bot.
-  - ✅ TOTP (Time-based One Time Passwords) generation, QR code generation, and verification (Google Authenticator support).
-  - ✅ JWT creation, verification, optional token revocation with memory/Redis storage, and advanced middleware for protecting routes, custom cookie/header handling, role-based guards, and token extraction from custom sources.
-  - ✅ Session management (in-memory or Redis).
-  - ✅ OAuth 2.0 integration for Google, Facebook, GitHub, X (Twitter), Linkedin, and additional providers like Apple, Discord, Slack, Microsoft, Telegram,and WhatsApp.
-  - ⚙️ Developer extensibility: custom senders via `auth.register.sender()` and chainable sending via `auth.use(name).send(...)`.
-  - ✅ Frontend client SDK (`authverify.client.js`) for browser usage: QR display, OTP verification, JWT requests, auth headers, generting passkey and sending it backend; works without modules, just `<script>`.
-  - ✅ Automatic JWT cookie handling for Express apps, supporting secure, HTTP-only cookies and optional auto-verification.
-  - ✅ Passwordless login and registration with passkeys and webauthn.
-  - ✅ Fully asynchronous/Promise-based API, with callback support where applicable.
-  - ✅ Chainable OTP workflow with cooldowns, max attempts, and resend functionality.
+**AuthVerify** is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications.
+ - [Installation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-installation)
+ - [Initialization](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-example-initialize-library-commonjs)
+ - [JWT](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-jwt-usage)
+ - [OTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-otp-email--sms--telegram--custom-sender)
+ - [TOTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-totp-time-based-one-time-passwords--google-authenticator-support-v140)
+ - [Passkeys](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#%EF%B8%8F-passkey-webauthn-v161)
+ - [Auth-Verify Frontend SDK](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#auth-verify-client)
+ - [OAuth](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-oauth-20-integration-v120)
+ - [Magic Links](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-magiclink-passwordless-login-new-in-v180)
+ - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
+ - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#sessionmanager)
 ---
 
 ## 🧩 Installation
@@ -44,13 +43,35 @@ npm install auth-verify
 const AuthVerify = require('auth-verify');
 
 const auth = new AuthVerify({
-  jwtSecret: "super_secret_value",
-  storeTokens: "memory", // or "redis" or "none"
-  otpExpiry: "5m",       // supports number (seconds) OR string like '30s', '5m', '1h'
-  otpHash: "sha256",     // optional OTP hashing algorithm
-  // you may pass redisUrl inside managers' own options when using redis
+  jwtSecret: 'your_jwt_secret',
+  cookieName: 'jwt_token',
+  otpExpiry: 300,        // in seconds
+  storeTokens: 'memory', // or 'redis'
+  redisUrl: 'redis://localhost:6379',
+  totp: { digits: 6, step: 30, alg: 'SHA1' },
+  rpName: 'myApp',
+  passExp: '2m',
+  mlSecret: 'ml_secret',
+  mlExpiry: '5m',
+  appUrl: 'https://yourapp.com'
 });
 ```
+### Options explained:
+
+| Option        | Default                                | Description                              |
+| ------------- | -------------------------------------- | ---------------------------------------- |
+| `jwtSecret`   | `"jwt_secret"`                         | Secret key for JWT signing               |
+| `cookieName`  | `"jwt_token"`                          | Cookie name for JWT storage              |
+| `otpExpiry`   | `300`                                  | OTP expiration in seconds                |
+| `storeTokens` | `"memory"`                             | Token storage type (`memory` or `redis`) |
+| `redisUrl`    | `undefined`                            | Redis connection string if using Redis   |
+| `totp`        | `{ digits: 6, step: 30, alg: 'SHA1' }` | TOTP configuration                       |
+| `rpName`      | `"auth-verify"`                        | Relying party name for Passkeys          |
+| `passExp`     | `"2m"`                                 | Passkey expiration duration              |
+| `mlSecret`    | `"ml_secret"`                          | Magic link secret                        |
+| `mlExpiry`    | `"5m"`                                 | Magic link expiration duration           |
+| `appUrl`      | `"https://yourapp.com"`                | App base URL for Magic Links             |
+
 
 ---
 
@@ -1202,7 +1223,9 @@ app.listen(3000, () => console.log('🚀 Server running on port 3000'));
 | HTML Custom Email          | ✅         |
 
 ### ⚡ Future Vision
+
 `auth.magic` is built for **modern SaaS**, **fintech**, and **crypto** apps that need **passwordless**, **secure**, and **user-friendly** authentication.
+
 ---
 
 ## Telegram integration
