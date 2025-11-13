@@ -5,7 +5,7 @@
  - [Initialization](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-example-initialize-library-commonjs)
  - [JWT](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-jwt-usage)
  - [OTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-otp-email--sms--telegram--whatsapp-api--custom-sender)
- - [TOTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-totp-time-based-one-time-passwords--google-authenticator-support-v140)
+ - [TOTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-totp-time-based-one-time-passwords--google-authenticator-support)
  - [Passkeys](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#%EF%B8%8F-passkey-webauthn-v161)
  - [Auth-Verify client](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#auth-verify-client)
  - [OAuth](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-oauth-20-integration-v120)
@@ -522,7 +522,7 @@ console.log("Resent OTP:", newCode);
 
 ## 📝 AuthVerify TOTP API Guide
 ### ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support
-### 1️⃣ Generate TOTP Secret
+#### 1️⃣ Generate TOTP Secret
 ##### Theory:
  - Generate a Base32 secret for a user.
  - Secret is required to generate TOTP codes in an authenticator app (Google Authenticator, Authy, etc.).
@@ -547,8 +547,8 @@ const res = auth.get("/api/secret/totp/secret").data();
 console.log(res.secret); // "JBSWY3DPEHPK3PXP"
 ```
 
-### 2️⃣ Generate TOTP URI
-#### Theory:
+#### 2️⃣ Generate TOTP URI
+##### Theory:
  - Convert secret into an **otpauth:// URI** for authenticator apps.
  - URI includes: `secret`, `label` (user email), `issuer` (app name), algorithm, digits, and period.
 ##### Code:
@@ -560,7 +560,7 @@ app.post("/api/totp/uri", (req, res) => {
   res.json({ success: true, uri });
 });
 ```
-#### Usage:
+##### Usage:
 ```js
 const { uri } = await fetch("http://localhost:3000/api/totp/uri", {
   method: "POST",
@@ -582,11 +582,11 @@ const uri = auth.post("/api/totp/uri").data({secret: "JBSWY3DPEHPK3PXP", label: 
 console.log(uri); // otpauth://totp/MyApp:user@example.com?secret=...
 ```
 
-### 3️⃣ Generate QR Code
-#### Theory:
+#### 3️⃣ Generate QR Code
+##### Theory:
  - Convert TOTP URI into a QR code.
  - Users can scan QR code with their authenticator app.
-#### Code:
+##### Code:
 ```js
 // POST /api/totp/qrcode
 app.post("/api/totp/qrcode", async (req, res) => {
@@ -595,7 +595,7 @@ app.post("/api/totp/qrcode", async (req, res) => {
   res.json({ success: true, qr });
 });
 ```
-#### Usage:
+##### Usage:
 ```
 const { qr } = await fetch("http://localhost:3000/api/totp/qrcode", {
   method: "POST",
@@ -605,7 +605,7 @@ const { qr } = await fetch("http://localhost:3000/api/totp/qrcode", {
 
 document.getElementById("totp-qrcode").src = qr;
 ```
-#### Usage (with Auth-verify client):
+##### Usage (with Auth-verify client):
 ```js
 const auth = new AuthVerify({
   apiBase: "http://localhost:3000",
@@ -642,7 +642,7 @@ const { valid } = await fetch("http://localhost:3000/api/totp/verify", {
 if(valid) alert("✅ Verified!");
 else alert("❌ Invalid TOTP code");
 ```
-#### Usage (with Auth-verify client):
+##### Usage (with Auth-verify client):
 ```js
 const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
 
@@ -650,7 +650,7 @@ const valid = auth.post("/api/totp/verify").verify(userCode);
 if(valid) alert("✅ Verified!");
 else alert("❌ Invalid TOTP code");
 ```
-### 5️⃣ API Reference Table
+#### 5️⃣ API Reference Table
 
 | Endpoint           | Method | Description                   | Payload                     | Response                                             |
 | ------------------ | ------ | ----------------------------- | --------------------------- | ---------------------------------------------------- |
@@ -663,12 +663,12 @@ else alert("❌ Invalid TOTP code");
 
 ## 🗝️ Passkey (WebAuthn)
 
-## 🔑 Passkey Authentication — AuthVerify Frontend + Backend Guide
+### 🔑 Passkey Authentication — AuthVerify Frontend + Backend Guide
 This guide explains how to integrate Passkey (WebAuthn) authentication using the AuthVerify ecosystem — including both:
  - 🧠 **Backend:** `PasskeyManager` (Node.js)
  - 💻 **Frontend:** `window.AuthVerify` wrapper (Browser)
 
-### ⚙️ 1. Backend Setup (Node.js)
+#### ⚙️ 1. Backend Setup (Node.js)
 Import and configure `AuthVerify`:
 ```js
 const express = require("express");
@@ -684,8 +684,8 @@ const auth = new AuthVerify({
 });
 ```
 
-### 🧩 2. Passkey Registration API
-#### ✅ `POST /api/register/start`
+#### 🧩 2. Passkey Registration API
+##### ✅ `POST /api/register/start`
 Generate registration challenge for a new user.
 ```js
 app.post("/api/register/start", async (req, res) => {
@@ -695,7 +695,7 @@ app.post("/api/register/start", async (req, res) => {
 });
 ```
 > `auth.issue()` can be used for saving passkey in any device
-#### ✅ `POST /api/register/finish`
+##### ✅ `POST /api/register/finish`
 Verify attestation and save credential.
 ```js
 app.post("/api/register/finish", async (req, res) => {
@@ -721,8 +721,8 @@ Example successful response:
   "credentialId": "AaBbCcDdEe..."
 }
 ```
-### 🔐 3. Passkey Login API
-#### ✅ `POST /api/login/start`
+#### 🔐 3. Passkey Login API
+##### ✅ `POST /api/login/start`
 Generate login challenge for existing user.
 ```js
 app.post("/api/login/start", async (req, res) => {
@@ -731,7 +731,7 @@ app.post("/api/login/start", async (req, res) => {
   res.json(auth.passkey.getOptions());
 });
 ```
-#### ✅ `POST /api/login/finish`
+##### ✅ `POST /api/login/finish`
 Verify user assertion (digital signature).
 ```js
 app.post("/api/login/finish", async (req, res) => {
@@ -746,7 +746,7 @@ Successful login:
   "user": { "id": "u123", "username": "john_doe" }
 }
 ```
-### 💻 4. Frontend Integration (Browser)
+#### 💻 4. Frontend Integration (Browser)
 Include your frontend wrapper (already built as `window.AuthVerify`):
 ```html
 <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
@@ -754,10 +754,10 @@ Include your frontend wrapper (already built as `window.AuthVerify`):
   const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
 </script>
 ```
-### ⚡ 5. Frontend Methods
-#### 🧱 `.post(url) / .get(url)`
+#### ⚡ 5. Frontend Methods
+##### 🧱 `.post(url) / .get(url)`
 Set endpoint for POST/GET requests before calling `.data()`.
-#### ⚙️ `.data(payload)`
+##### ⚙️ `.data(payload)`
 Send JSON to backend and return response.
 
 <!-- ### 🧩 6. Passkey Registration (Frontend)
@@ -773,7 +773,7 @@ auth
   .catch(err => console.error("❌ Error:", err));
 ``` -->
 
-### 🧠 Step Breakdown
+#### 🧠 Step Breakdown
 ##### 1️⃣ **Frontend → Backend:** `/api/register/start`
 Sends `{ user }` and gets WebAuthn challenge/options.
 ##### 2️⃣ **Browser:**
@@ -806,14 +806,14 @@ Sends credential signature data (`authenticatorData`, `signature`, etc.)
 ##### 4️⃣ **Backend:**
 Verifies signature using stored public key.
 
-### 🧠 8. Quick Reference
+#### 🧠 8. Quick Reference
 | Layer    | Method                           | Description                  |
 | -------- | -------------------------------- | ---------------------------- |
 | Backend  | `passkey.register(user)`         | Start registration           |
 | Backend  | `passkey.getOptions()`           | Return challenge for browser |
 | Backend  | `passkey.finish(clientResponse)` | Finish registration/login    |
 
-### ✅ 9. Notes & Best Practices
+#### ✅ 9. Notes & Best Practices
  - Use HTTPS in production (`navigator.credentials` requires secure origin)
  - Always send real `user.id` (string, not numeric)
  - Store public keys securely in DB after registration
