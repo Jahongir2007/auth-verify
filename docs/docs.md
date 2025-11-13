@@ -7,7 +7,7 @@
  - [OTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-otp-email--sms--telegram--custom-sender)
  - [TOTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-totp-time-based-one-time-passwords--google-authenticator-support-v140)
  - [Passkeys](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#%EF%B8%8F-passkey-webauthn-v161)
- - [Auth-Verify Frontend SDK](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#auth-verify-client)
+ - [Auth-Verify client](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#auth-verify-client)
  - [OAuth](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-oauth-20-integration-v120)
  - [Magic Links](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-magiclink-passwordless-login-new-in-v180)
  - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
@@ -35,6 +35,7 @@ npm install auth-verify
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
 - `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X, Linkedin, Apple, Discord, Slack, Microsoft, Telegram and WhatsApp.
 - `PasskeyManager`: Handle passwordless login and registration using WebAuthn/passkey.
+- `MagicLinkManager`: Handle passwordless login with magic link generation and verification.
 ---
 
 ## 🚀 Example: Initialize library (CommonJS)
@@ -77,210 +78,260 @@ const auth = new AuthVerify({
 
 ## 🔐 JWT Usage
 
-### JWT Middleware (`protect`) (v1.5.0+) 
+## 🔐 AuthVerify JWT API Guide
 
-auth-verify comes with a fully customizable JWT middleware, making it easy to **protect routes**, **attach decoded data to the request**, and **check user roles**.
+`AuthVerify` includes a powerful `jwt` manager that simplifies JSON Web Token (JWT) authentication.
+It supports **automatic cookie handling**, **memory or Redis token storage**, and an **Express middleware** for route protection.
 
-#### ⚙️ `protect` Method Overview
-
-Function signature:
-```js
-protect(options = {})
-```
-**Description**:
- - Returns an Express-style middleware.
- - Automatically reads JWT from cookie, header, or custom extractor.
- - Verifies the token and optionally checks for roles.
- - Attaches the decoded payload to req (default property: req.user).
-
-| Option           | Type     | Default           | Description                                                                            |
-| ---------------- | -------- | ----------------- | -------------------------------------------------------------------------------------- |
-| `onError`        | Function | `null`            | Custom error handler. `(err, req, res)`                                                |
-| `attachProperty` | String   | `"user"`          | Where to attach decoded token payload on `req`                                         |
-| `requiredRole`   | String   | `null`            | Optional role check. Throws error if decoded role does not match                       |
-| `cookieName`     | String   | `this.cookieName` | Name of the cookie to read JWT from                                                    |
-| `headerName`     | String   | `"authorization"` | Header name to read JWT from. `"authorization"` splits `Bearer TOKEN` automatically    |
-| `extractor`      | Function | `null`            | Custom function to extract token. Receives `req` as argument and must return the token |
-
-#### Middleware Behavior
-
-1. **Token extraction order:**
-  - First: `extractor(req)` if provided
-  - Second: `req.headers[headerName]` (for `authorization`, splits `Bearer TOKEN`)
-  - Third: `cookieName` from request cookies
-2. **Verification**:
-  - Calls `this.verify(token)`
-  - Throws `NO_TOKEN` if no token is found
-  - Throws `ROLE_NOT_ALLOWED` if `requiredRole`is provided but decoded role does not match
-3. **Attachment**:
-  - Decoded token is attached to `req[attachProperty]`
-4. **Error handling**:
-  - Default: responds with `401` and JSON `{ success: false, error: err.message }`
-  - Custom: if `onError` is provided, it is called instead of default behavior
-
-#### Example Usage
-##### Basic Usage
-```js
-const express = require("express");
-const AuthVerify = require("auth-verify");
-const app = express();
-
-const auth = new AuthVerify({ jwtSecret: "supersecret" });
-
-// Protect route
-app.get("/dashboard", auth.jwt.protect(), (req, res) => {
-  // req.user contains decoded JWT payload
-  res.json({ message: `Welcome, ${req.user.userId}` });
-});
-
-app.listen(3000, () => console.log("Server running on port 3000"));
-```
-
-##### Custom Cookie & Header
-```js
-app.get("/profile", auth.jwt.protect({
-  cookieName: "myToken",
-  headerName: "x-access-token"
-}), (req, res) => {
-  res.json({ user: req.user });
-});
-```
-  - JWT will be read from the cookie named `"myToken"` or from the header `"x-access-token"`.
-
-#### Role-based Guard
-```js
-app.get("/admin", auth.jwt.protect({
-  requiredRole: "admin"
-}), (req, res) => {
-  res.json({ message: "Welcome Admin" });
-});
-``` 
-  - Throws error if decoded token does not have role: `"admin"`.
-
-#### Custom Token Extractor
-```js
-app.get("/custom", auth.jwt.protect({
-  extractor: (req) => req.query.token
-}), (req, res) => {
-  res.json({ user: req.user });
-});
-```
-  - Allows you to read token from any custom location (e.g., query params).
-
-#### Custom Error Handler
-```js
-app.get("/custom-error", auth.jwt.protect({
-  onError: (err, req, res) => {
-    res.status(403).json({ error: "Access denied", details: err.message });
-  }
-}), (req, res) => {
-  res.json({ user: req.user });
-});
-```
-  - Overrides default `401` response with custom logic.
-
-### JWA Handling (v1.3.0+) 
-
-You can choose json web algorithm for signing jwt
+### ⚙️ Setup
 ```js
 const AuthVerify = require('auth-verify');
-const auth = new AuthVerify({ useAlg: 'HS512' }); // or 'HS256'
-
-(async ()=>{
-  const token = await auth.jwt.sign({userId: 123}, '30m');
-  console.log('token', token);
-})();
-```
-
-
-```js
-// create JWT
-const token = await auth.jwt.sign({ userId: 123 }, '1h'); // expiry string or number (ms) (and also you can add '1m' (minute), '5s' (second) and '7d' (day)) 
-console.log('token', token);
-
-// verify
-const decoded = await auth.jwt.verify(token);
-console.log('decoded', decoded);
-
-// decode without verification
-const payload = await auth.jwt.decode(token);
-
-// revoke a token (immediately)
-await auth.jwt.revoke(token, 0);
-
-// revoke token until a time in the future (e.g. '10m' or number ms)
-await auth.jwt.revokeUntil(token, '10m');
-
-// check if token is revoked (returns boolean)
-const isRevoked = await auth.jwt.isRevoked(token);
-```
-### 🍪 Automatic Cookie Handling (v1.1.0+)
-
-You can now automatically store and verify JWTs via HTTP cookies — no need to manually send them!
-```js
-const AuthVerify = require("auth-verify");
-const express = require("express");
-const app = express();
 
 const auth = new AuthVerify({
-  jwtSecret: "supersecret", storeTokens: "memory"
+  jwtSecret: 'super_secret_key',
+  cookieName: 'auth_token',
+  storeTokens: 'redis',         // or 'memory'
+  redisUrl: 'redis://localhost:6379',
+  useAlg: 'HS256',              // or any supported algorithm
 });
+```
+After initialization, the JWT system is accessible via `auth.jwt`.
 
-app.post("/login", async (req, res) => {
-  const token = await auth.jwt.sign({ userId: 1 }, "5s", { res });
-  res.json({ token }); // token is also set as cookie automatically
-});
+### 🧩 JWT Methods Overview
+| Method                                      | Description                                                  |
+| ------------------------------------------- | ------------------------------------------------------------ |
+| `auth.jwt.sign(payload, expiry?, options?)` | Creates a JWT token and optionally sets it in a cookie       |
+| `auth.jwt.verify(tokenOrReq)`               | Verifies a token or extracts it automatically from a request |
+| `auth.jwt.decode(token)`                    | Decodes JWT payload without verification                     |
+| `auth.jwt.revoke(token, revokeTime?)`       | Revokes a token immediately or after a timeout               |
+| `auth.jwt.isRevoked(token)`                 | Checks whether a token has been revoked                      |
+| `auth.jwt.protect(options?)`                | Express middleware to protect API routes                     |
+| `auth.jwt.readCookie(req, name)`            | Reads a JWT from cookies manually                            |
+| `auth.jwt.issue(user)`                      | Issues an **access token** and a **refresh token**           |
+| `auth.jwt.refresh(refreshToken)`            | Refreshes an **access token** using a valid refresh token    |
 
-app.get("/verify", async (req, res) => {
-  try {
-    const data = await auth.jwt.verify(req); // auto reads from cookie
-    res.json({ valid: true, data });
-  } catch (err) {
-    res.json({ valid: false, error: err.message });
-  }
-});
+### 🪄 `auth.jwt.sign(payload, expiry?, options?)`
+Signs a new JWT token.
+Can automatically store it in memory/Redis and set an HTTP-only cookie for browser clients.
+```js
+const token = await auth.jwt.sign(
+  { id: 'user_123', role: 'admin' },
+  '2h', // expiry time
+  { res } // Express res object to auto-set cookie
+);
+```
+#### Parameters:
+| Name             | Type               | Default | Description                                              |
+| ---------------- | ------------------ | ------- | -------------------------------------------------------- |
+| `payload`        | `object`           | —       | Data to include in the JWT                               |
+| `expiry`         | `string \| number` | `'1h'`  | Expiration time (`5m`, `2h`, `1d`, etc.)                 |
+| `options.res`    | `Response`         | —       | Express response object (sets cookie automatically)      |
+| `options.secure` | `boolean`          | `true`  | If `false`, cookie is not secure (for localhost testing) |
 
-app.listen(3000, () => console.log("🚀 Server running at http://localhost:3000"));
+#### Returns:
+`Promise<string>` → The generated JWT token.
+
+### ✅ `auth.jwt.verify(input)`
+
+Verifies and decodes a token.
+You can pass either a **raw JWT token string** or an **Express request object**.
+When passing `req`, the library automatically extracts the token from:
+ - `Authorization` header (`Bearer <token>`)
+ - Cookies (`auth_token` by default)
+```js
+// 1️⃣ Verify a token string
+const decoded = await auth.jwt.verify(token);
+
+// 2️⃣ Verify directly from a request
+const decoded = await auth.jwt.verify(req);
+```
+#### Returns:
+`Promise<object>` → Decoded payload if valid, throws error if invalid or revoked.
+
+### 🧠 `auth.jwt.decode(token)`
+Decodes a token **without verifying** the signature (useful for inspection or debugging).
+```js
+const data = await auth.jwt.decode(token);
+```
+**Returns:** Decoded object or `null`.
+
+### 🧩 `auth.jwt.issue(user)`
+Issues a new access token and a refresh token for a user.
+```js
+const { accessToken, refreshToken } = auth.jwt.issue({ id: 'user_123' });
+```
+ - **Access token:** short-lived, used for authentication.
+ - **Refresh token:** long-lived, used to get a new access token without logging in again.
+
+**Parameters:**
+| Name | Type   | Description                    |
+| ---- | ------ | ------------------------------ |
+| user | object | User object with `id` property |
+**Returns:**
+```js
+{ accessToken: string, refreshToken: string }
 ```
 
-What it does automatically:
+### 🔄 `auth.jwt.refresh(refreshToken)`
+Refreshes an **access token** using a valid **refresh token**.
+```js
+const newTokens = auth.jwt.refresh(refreshToken);
+```
+ - Validates the refresh token.
+ - Issues a new access token and refresh token pair.
+ - Throws an error if the token is invalid or expired.
 
- - Saves token in a secure HTTP-only cookie
- - Reads and verifies token from cookies
- - Supports both async/await and callback styles
+**Parameters:**
+| Name         | Type   | Description                  |
+| ------------ | ------ | ---------------------------- |
+| refreshToken | string | A valid refresh token string |
+**Returns:**
+```js
+{ accessToken: string, refreshToken: string }
+```
+### ❌ `auth.jwt.revoke(token, revokeTime?)`
+Revokes a token immediately or after a specified duration.
+```js
+await auth.jwt.revoke(token);      // revoke now
+await auth.jwt.revoke(token, '5m'); // revoke after 5 minutes
+```
+If using:
+ - `memory`: the token is removed from internal store.
+ - `redis`: the key is deleted or set to expire.
 
-Notes:
-- `sign` and `verify` support callback and promise styles in the implementation. When `storeTokens` is `"redis"` you should use the promise/async style (callback mode returns an error for redis in the current implementation).
+### 🚫 `auth.jwt.isRevoked(token)`
+
+Checks if a token is revoked (missing in memory or Redis).
+```js
+const revoked = await auth.jwt.isRevoked(token);
+if (revoked) console.log('Token is no longer valid.');
+```
+**Returns:** `boolean`
+
+### 🛡️ `auth.jwt.protect(options)`
+Express middleware for protecting routes that require authentication.
+```js
+app.get('/dashboard', auth.jwt.protect(), (req, res) => {
+  res.json({ user: req.user });
+});
+```
+Or with extra security options:
+```js
+app.get('/admin',
+  auth.jwt.protect({
+    requiredRole: 'admin',
+    attachProperty: 'sessionUser',
+    onError: (err, req, res) => res.status(403).json({ error: err.message })
+  }),
+  (req, res) => {
+    res.json({ message: `Welcome ${req.sessionUser.id}` });
+  });
+```
+#### Options:
+| Name             | Type       | Default                   | Description                                   |
+| ---------------- | ---------- | ------------------------- | --------------------------------------------- |
+| `attachProperty` | `string`   | `'user'`                  | Where decoded data is attached on the request |
+| `requiredRole`   | `string`   | `null`                    | Restricts route access by user role           |
+| `cookieName`     | `string`   | Inherited from AuthVerify | Cookie name to extract token                  |
+| `headerName`     | `string`   | `'authorization'`         | Header name to look for JWT                   |
+| `extractor`      | `function` | —                         | Custom token extraction logic                 |
+| `onError`        | `function` | —                         | Custom error handler `(err, req, res)`        |
+
+### 🍪 `auth.jwt.readCookie(req, name)`
+Manually extract a JWT from a cookie:
+```js
+const token = auth.jwt.readCookie(req, 'auth_token');
+```
+**Returns:** `string | null`
+
+### 🧩 Full Example
+```js
+const express = require('express');
+const AuthVerify = require('auth-verify');
+
+const auth = new AuthVerify({
+  jwtSecret: 'supersecret',
+  storeTokens: 'memory',
+});
+
+const app = express();
+
+app.use(express.json());
+
+// Login: issue JWT
+app.post('/login', async (req, res) => {
+  const token = await auth.jwt.sign({ id: 'u1', role: 'admin' }, '2h', { res });
+  res.json({ token });
+});
+
+// Protected route
+app.get('/me', auth.jwt.protect(), (req, res) => {
+  res.json({ message: `Welcome, ${req.user.id}` });
+});
+
+// Logout: revoke token
+app.post('/logout', async (req, res) => {
+  const token = auth.jwt.readCookie(req, 'auth_token');
+  await auth.jwt.revoke(token);
+  res.json({ success: true, message: 'Logged out' });
+});
+
+app.listen(3000, () => console.log('✅ Auth server running on port 3000'));
+```
+
+### 🧠 Notes
+ - Works seamlessly with `cookie-parser` or built-in cookie reader.
+ - Supports both **stateful (Redis/Memory)** and **stateless (None)** JWT modes.
+ - Built-in cookie signing ensures secure browser sessions.
+ - Middleware simplifies authentication guards in Express apps.
 
 ---
 
-## 🔢 OTP (email / sms / telegram / custom sender)
+## 🔢 OTP (email / sms / telegram / whatsapp api / custom sender)
 
-### 🤝 Configure sender
-
-You can set the default sender (email/sms/telegram):
-
+### 🔐 OTP Manager — `auth-verify`
+The **OTPManager** handles one-time passwords (OTP) for multi-channel authentication:
+ - ✅ Email
+ - ✅ SMS
+ - ✅ WhatsApp
+ - ✅ Telegram
+Supports **memory**, **Redis**, or **no storage**, cooldowns, and max-attempt tracking.
+### 📦 Import
 ```js
-// email example
-auth.otp.setSender({
-  via: 'email',
-  sender: 'your@address.com',
-  pass: 'app-password-or-smtp-pass',
-  service: 'gmail' // or 'smtp'
-  // if smtp service: host, port, secure (boolean)
+const AuthVerify = require("auth-verify");
+const auth = new AuthVerify();
+
+// Access OTP manager
+const otp = auth.otp; // internally uses OTPManager
+```
+### ⚙️ Constructor Options
+| Option        | Type          | Default                    | Description                                       |
+| ------------- | ------------- | -------------------------- | ------------------------------------------------- |
+| `otpExpiry`   | string/number | `300`                      | OTP expiration time, e.g., `"5m"` or `"30s"`      |
+| `storeTokens` | string        | `"memory"`                 | Storage type: `"memory"`, `"redis"`, or `"none"`  |
+| `otpHash`     | string        | `"sha256"`                 | Hashing algorithm for OTP (optional)              |
+| `sender`      | object        | `null`                     | Email/SMS/WhatsApp/Telegram sender configuration  |
+| `redisUrl`    | string        | `"redis://localhost:6379"` | Redis connection URL (if `storeTokens = 'redis'`) |
+
+### ⚙️ Sender Configuration
+#### Email sender
+```js
+otp.sender({
+    via: "email", // or "sms", "telegram", "whatsapp"
+    service: "gmail", // email service
+    sender: "your_email@gmail.com",
+    pass: "your_app_password",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false
 });
 
-// or you can use sender() method
-// auth.otp.sender({
-//   via: 'email',
-//   sender: 'your@address.com',
-//   pass: 'app-password-or-smtp-pass',
-//   service: 'gmail' // or 'smtp'
-//   // if smtp service: host, port, secure (boolean)
-// });
-
-// sms example (the internal helper expects provider/apiKey or mock flag)
-auth.otp.setSender({
+// or you can use otp.setSender({...});
+```
+#### SMS sender
+##### Using infobip:
+```js
+otp.sender({
   via: 'sms',
   provider: 'infobip',
   apiKey: 'API_KEY',
@@ -288,8 +339,10 @@ auth.otp.setSender({
   sender: 'SENDER_NAME',
   mock: true // in dev prints message instead of sending
 });
-
-auth.otp.setSender({
+```
+##### Using twilio:
+```js
+otp.sender({
   via: 'sms',
   provider: 'twilio',
   apiKey: 'ACCOUNT_SID',
@@ -297,8 +350,10 @@ auth.otp.setSender({
   sender: 'SENDER_NAME',
   mock: true // in dev prints message instead of sending
 });
-
-auth.otp.setSender({
+```
+##### Using vonage:
+```js
+otp.sender({
   via: 'sms',
   provider: 'vonage',
   apiKey: 'API_KEY',
@@ -306,324 +361,467 @@ auth.otp.setSender({
   sender: 'SENDER_NAME',
   mock: true // in dev prints message instead of sending
 });
+```
 
-// telegram example
-auth.otp.setSender({
+#### Telegram sender
+```js
+otp.sender({
   via: 'telegram',
   token: '123:ABC', // bot token
   // call auth.otp.setupTelegramBot(token) to start the bot
 });
 ```
-
-### 🛫 Simple and easy sending OTP codes
-
-OTP codes can be simply and easily sent by `send()` method.
-
+#### WhatsApp Business API
 ```js
-auth.otp.send('johndoe@mail.com', {otpLen: 5, subject: "Email verification", html: `Your OTP code is ${auth.otp.code}`}, (err)=>{
-  if(err) console.log(err)
-  console.log('OTP sent!');
-});
-```
-or you can simple use it like this:
-```js
-auth.otp.send('johndoe@mail.com');
-```
- 
-### ⛓️ Generate → Save → Send (chainable)
-
-OTP generation is chainable: `generate()` returns the OTP manager instance.
-
-```js
-// chainable + callback style example
-auth.otp.generate(6).set('user@example.com', (err) => {
-  if (err) throw err;
-  auth.otp.message({
-    to: 'user@example.com',
-    subject: 'Your OTP',
-    html: `Your code: <b>${auth.otp.code}</b>`
-  }, (err, info) => {
-    if (err) console.error('send error', err);
-    else console.log('sent', info && info.messageId);
-  });
-});
-
-// Sending OTP with SMS
-auth.otp.generate(6).set('+1234567890', (err) => {
-  if (err) throw err;
-  auth.otp.message({
-    to: '+1234567890',
-    text: `Your code: <b>${auth.otp.code}</b>`
-  }, (err, info) => {
-    if (err) console.error('send error', err);
-    else console.log('sent', info && info.messageId);
-  });
-});
-```
-`+1234567890` is reciever number
-
-Async/await style:
-
-```js
-await auth.otp.generate(6);              // generates and stores `auth.otp.code`
-await auth.otp.set('user@example.com'); // saves OTP into memory/redis
-await auth.otp.message({
-  to: 'user@example.com',
-  subject: 'Verify',
-  html: `Your code: <b>${auth.otp.code}</b>`
+otp.sender({
+  via: 'whatsapp',
+  phoneId: "YOUR_PHONE_ID",
+  token: "YOUR_WHATSAPP_TOKEN"
 });
 ```
 
-### ✔️ Verify
+### 🪄 Generate OTP
+```js
+otp.generate(6); // 6-digit OTP
+```
+ - Returns a **numeric string**
+ - Supports callback style:
+```js
+otp.generate(6, (err, code) => {
+    console.log(code);
+});
+```
+ - Chainable:
+```js
+otp.generate(6).set("user@example.com");
+```
 
+### 💾 Store OTP
+```js
+await otp.set("user@example.com");
+```
+ - Supports **memory** and **Redis**
+ - Stores metadata: attempts, expiry, cooldown
+ - Can also use **callback style** for memory storage
+
+### 📤 Send OTP
+```js
+await otp.send("user@example.com", {
+    subject: "Your OTP Code",
+    text: "Your OTP is 123456",
+    html: "<b>123456</b>"
+});
+```
+Supports channels:
+| `via`    | Notes                                    |
+| -------- | ---------------------------------------- |
+| email    | Configured with Gmail/SMTP               |
+| sms      | Uses `sendSMS` helper or custom provider |
+| telegram | Sends OTP via bot, requires `botToken`   |
+| whatsapp | Uses WhatsApp Business API               |
+
+**Callback style:**
+```js
+otp.send("user@example.com", options, (err, info) => {
+    if(err) console.error(err);
+    else console.log(info);
+});
+```
+
+### 🔑 Verify OTP
 ```js
 // Promise style
-try {
-  const ok = await auth.otp.verify({ check: 'user@example.com', code: '123456' });
-  console.log('verified', ok);
-} catch (err) {
-  console.error('verify failed', err.message);
-}
+const result = await otp.verify({ check: "user@example.com", code: "123456" });
 
-// Callback style also supported: auth.otp.verify({check, code}, callback)
-auth.otp.verify({ check: 'user@example.com', code: '123456' }, (err, isValid)=>{
-  if(err) console.log(err);
-  if(isValid) console.log('Correct code!');
-  else console.log('Incorrect code!');
+// Callback style
+otp.verify({ check: "user@example.com", code: "123456" }, (err, success) => {
+    if(err) console.error(err.message);
+    else console.log("✅ OTP verified");
 });
+```
+ - Automatically deletes OTP after successful verification
+ - Checks expiry and maximum attempts
+ - Throws descriptive errors:
+  - `OTP expired`
+  - `Invalid OTP`
+  - `Max attempts reached`
 
-// or you can use it like this:
-// auth.otp.verify('user@example.com','123456', (err, isValid)=>{
-//   if(err) console.log(err);
-//   if(isValid) console.log('Correct code!');
-//   else console.log('Incorrect code!');
-// });
+### ⏱ Cooldown
+```js
+otp.cooldown("30s"); // cooldown before OTP can be resent
+```
+ - Accepts `"30s"`, `"2m"`, `"1h"`, or milliseconds
+ - Enforced in `resend()` method
+
+### 🔄 Resend OTP
+```js
+const code = await otp.resend("user@example.com");
+```
+ - Automatically generates a new OTP if expired
+ - Updates cooldown
+ - Sends via configured channel (email/SMS/WhatsApp)
+ - Callback support:
+```js
+otp.resend("user@example.com", (err, code) => {
+    if(err) console.error(err.message);
+    else console.log("Resent OTP:", code);
+});
 ```
 
-### Resend and cooldown / max attempts
+### 🤖 Telegram Integration
+```js
+await otp.setupTelegramBot("YOUR_BOT_TOKEN");
+```
+ - Sets up a Telegram bot to send OTP
+ - Users share their phone number in chat
+ - OTP automatically sent to the shared number
 
-- `auth.otp.cooldown('30s')` or `auth.otp.cooldown(30000)` — set cooldown duration.
-- `auth.otp.maxAttempt(5)` — set maximum attempts allowed.
-- `auth.otp.resend(identifier)` — regenerate and resend OTP, observing cooldown and expiry rules.
+### 📌 Private Methods (Internal)
+- `#sendEmail(reciever, options)` → Sends email OTP
+- `#sendSMS(reciever, options)` → Sends SMS OTP
+- `#sendWhatsApp(reciever, options)` → Sends WhatsApp OTP
+> Usually not called directly — use `otp.send()` instead.
 
-`resend` returns the new code (promise style) or calls callback.
+### 🧩 Example Usage
+```js
+const AuthVerify = require("auth-verify");
+const auth = new AuthVerify({ otpExpiry: "5m", storeTokens: "memory" });
+
+// Set sender
+auth.otp.setSender({
+    via: "email",
+    service: "gmail",
+    sender: process.env.EMAIL,
+    pass: process.env.EMAIL_PASS
+});
+
+// Generate and send OTP
+await auth.otp.send("user@example.com", { subject: "Verify your account" });
+
+// Verify OTP
+try {
+    await auth.otp.verify({ check: "user@example.com", code: "123456" });
+    console.log("✅ OTP verified!");
+} catch (err) {
+    console.error(err.message);
+}
+
+// Resend OTP if needed
+const newCode = await auth.otp.resend("user@example.com");
+console.log("Resent OTP:", newCode);
+```
+
+### ⚡ Notes
+ - OTPManager is fully **integrated** into auth-verify wrapper
+ - Supports **multi-channel OTP** with memory or Redis storage
+ - Handles **cooldowns**, **max attempts**, and **automatic expiry**
+ - Can be **extended** with custom sender functions
 
 ---
 
-## 🗝️ Passkey (WebAuthn) (v1.6.1+)
-
-`AuthVerify` includes a `PasskeyManager` class to handle passwordless login using WebAuthn / passkeys. You can **register** users, **verify login**, and manage **challenges** safely.
-
-### Setup
+## 📝 AuthVerify TOTP API Guide
+### ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support
+### 1️⃣ Generate TOTP Secret
+##### Theory:
+ - Generate a Base32 secret for a user.
+ - Secret is required to generate TOTP codes in an authenticator app (Google Authenticator, Authy, etc.).
+##### Code:
 ```js
-const AuthVerify = require("auth-verify");
-
-const auth = new AuthVerify({
-  passExp: "2m", // passkey challenge TTL
-  rpName: "MyApp",
-  storeTokens: "memory" // or "redis"
+// GET /api/totp/secret
+app.get("/api/totp/secret", (req, res) => {
+  const secret = auth.totp.secret(); // Base32 secret
+  res.json({ success: true, secret });
 });
-
-const user = {
-  id: "user1",
-  username: "john_doe",
-  credentials: [] // will store registered credentials
-};
 ```
-### 1️⃣ Register a new Passkey
-The registration process consists of **two steps**:
-  **1.** Generate a registration challenge
-  **2.** Complete attestation after client responds
-
-#### Step 1: Generate challenge
+##### Usage:
 ```js
-// register user
-await auth.passkey.register(user);
-
-// get WebAuthn options for the client
-const options = auth.passkey.getOptions();
-console.log(options);
-
-/* Example output:
-{
-  challenge: "base64url-challenge",
-  rp: { name: "MyApp" },
-  user: { id: "dXNlcjE", name: "john_doe", displayName: "john_doe" },
-  pubKeyCredParams: [{ alg: -7, type: "public-key" }]
-}
-*/
+const response = await fetch("http://localhost:3000/api/totp/secret");
+const data = await response.json();
+console.log(data.secret); // "JBSWY3DPEHPK3PXP"
 ```
-> Send options to the browser to call:
-> ```js
-> navigator.credentials.create({ publicKey: options })
-> ```
-
-#### Step 2: Finish attestation
-Once the client returns the attestation response:
+##### Usage (with Auth-verify client):
 ```js
-const clientResponse = {
-  id: "...", // credentialId from browser
-  response: {
-    clientDataJSON: "...",
-    attestationObject: "..."
-  }
-};
-
-const result = await auth.passkey.finish(clientResponse);
-console.log(result);
-/* Example result:
-{
-  status: "ok",
-  user: {
-    id: "user1",
-    username: "john_doe",
-    credentials: [
-      { id: "credentialId", publicKey: "pem-key" }
-    ]
-  },
-  challengeVerified: true,
-  rawAuthData: <Buffer ...>
-}
-*/
+const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+const res = auth.get("/api/secret/totp/secret").data();
+console.log(res.secret); // "JBSWY3DPEHPK3PXP"
 ```
-> After this, the user now has a **registered passkey**.
 
-### 2️⃣ Login with Passkey
-Login also consists of **two steps**:
-  **1.** Generate assertion challenge
-  **2.** Complete verification
-#### Step 1: Generate login challenge
+### 2️⃣ Generate TOTP URI
+#### Theory:
+ - Convert secret into an **otpauth:// URI** for authenticator apps.
+ - URI includes: `secret`, `label` (user email), `issuer` (app name), algorithm, digits, and period.
+##### Code:
 ```js
-await auth.passkey.login(user);
-
-const options = auth.passkey.getOptions();
-console.log(options);
-
-/* Example output:
-{
-  challenge: "base64url-challenge",
-  allowCredentials: [
-    { id: <Buffer...>, type: "public-key" }
-  ],
-  timeout: 60000
-}
-*/
-```
-> Send this `options` to the browser for `navigator.credentials.get({ publicKey: options })`.
-
-#### Step 2: Finish login assertion
-```js
-const clientLoginResponse = {
-  id: "credentialId",
-  response: {
-    clientDataJSON: "...",
-    authenticatorData: "...",
-    signature: "..."
-  }
-};
-
-const loginResult = await auth.passkey.finish(clientLoginResponse);
-console.log(loginResult);
-/* Example output:
-{
-  status: "ok",
-  user: {
-    id: "user1",
-    username: "john_doe",
-    credentials: [...]
-  }
-}
-*/
-```
-> If `status === "ok"`, the login is successful.
-
-### 3️⃣ Notes
-
- - `auth.passkey.register()` and `auth.passkey.login()` return this so you can chain:
-```js
-await auth.passkey
-  .register(user)
-  .getOptions(); // get WebAuthn options
-```
- - `finish()` **must be called after `register()` or `login()`** with the client’s response.
- - TTL (`passExp`) ensures challenges **expire automatically** (memory or Redis store).
- 
-### 4️⃣ Summary of Methods
-| Method                   | Purpose                         | Returns            |
-| ------------------------ | ------------------------------- | ------------------ |
-| `register(user)`         | Start passkey registration      | `this` (chainable) |
-| `login(user)`            | Start passkey login             | `this` (chainable) |
-| `getOptions()`           | Get WebAuthn options for client | Object             |
-| `finish(clientResponse)` | Complete attestation/assertion  | Result object      |
-
-## ✅ TOTP (Time-based One Time Passwords) — Google Authenticator support (v1.4.0+)
-```js
-const AuthVerify = require("auth-verify");
-const auth = new AuthVerify();
-// Optionally:
-/*
-const AuthVerify = require("auth-verify");
-const auth = new AuthVerify({
-    totp: {
-      digits: 6 (default)
-      step: 30 (default)
-      alg: "SHA1" (default)
-    }
+// POST /api/totp/uri
+app.post("/api/totp/uri", (req, res) => {
+  const { secret, label, issuer } = req.body;
+  const uri = auth.totp.uri({ secret, label, issuer });
+  res.json({ success: true, uri });
 });
-*/
 ```
-You can change `digits`, `step`, `alg`.
- - `digits`: how many digits your one-time password has **(Google Authenticator default = 6 digits)**
- - `step`: how long each TOTP code lives in seconds **(Google Authenticator default = 30 seconds)**
- - `alg`: the hashing algorithm used to generate the OTP **(Google Authenticator default = SHA1)**
-### Generate secret
+#### Usage:
 ```js
-const secret = auth.totp.secret();
-console.log(secret); //base 32
-```
-### generate otpauth URI
-```js
-const uri = auth.totp.uri({
-  label: "user@example.com",
-  issuer: "AuthVerify",
-  secret
-});
+const { uri } = await fetch("http://localhost:3000/api/totp/uri", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    secret: "JBSWY3DPEHPK3PXP",
+    label: "user@example.com",
+    issuer: "MyApp"
+  })
+}).then(r => r.json());
 
 console.log(uri);
+// otpauth://totp/MyApp:user@example.com?secret=...
 ```
-### generate QR code image
-(send this PNG to frontend or show in UI)
+##### Usage (with Auth-verify client):
 ```js
-const qr = await auth.totp.qrcode(uri); // or you can use await auth.totp.qr(uri);
-console.log(qr); // data:image/png;base64,...
+const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+const uri = auth.post("/api/totp/uri").data({secret: "JBSWY3DPEHPK3PXP", label: "user@example.com", issuer: "MyApp"});
+console.log(uri); // otpauth://totp/MyApp:user@example.com?secret=...
 ```
-### generate a TOTP code
-```js
-const token = auth.totp.generate(secret);
-console.log("TOTP:", token);
-```
-### verify a code entered by user
-```js
-const ok = auth.totp.verify(secret, token);
-console.log(ok); // true or false
-```
-### example real flow
-```js
-// Register UI
-const secret = auth.totp.secret();
-const uri = auth.totp.uri({ label: "john@example.com", issuer: "AuthVerify", secret });
-const qr = await auth.totp.qrcode(uri);
-// show qr to user
 
-// Then user scans QR with Google Authenticator
-// Then user enters 6-digit code
-const token = req.body.code;
+### 3️⃣ Generate QR Code
+#### Theory:
+ - Convert TOTP URI into a QR code.
+ - Users can scan QR code with their authenticator app.
+#### Code:
+```js
+// POST /api/totp/qrcode
+app.post("/api/totp/qrcode", async (req, res) => {
+  const { uri } = req.body;
+  const qr = await auth.totp.qr(uri); // returns base64 data URL
+  res.json({ success: true, qr });
+});
+```
+#### Usage:
+```
+const { qr } = await fetch("http://localhost:3000/api/totp/qrcode", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ uri })
+}).then(r => r.json());
 
-// Verify
-if (auth.totp.verify(secret, token )) {
-  // enable 2FA
+document.getElementById("totp-qrcode").src = qr;
+```
+#### Usage (with Auth-verify client):
+```js
+const auth = new AuthVerify({
+  apiBase: "http://localhost:3000",
+  qrEl: document.getElementById("totp-qrcode")
+});
+
+auth.get("/api/totp/qrcode").qr();
+```
+### 4️⃣ Verify TOTP Code
+#### Theory:
+ - Compare user-provided code with expected code.
+ - Optional `window` allows ±1 or more steps to account for clock skew.
+#### Code:
+```js
+// POST /api/totp/verify
+app.post("/api/totp/verify", (req, res) => {
+  const { secret, code, window } = req.body;
+  const valid = auth.totp.verify(secret, code, window);
+  res.json({ success: true, valid });
+});
+```
+#### Usage:
+```js
+const userCode = prompt("Enter your TOTP code:");
+const { valid } = await fetch("http://localhost:3000/api/totp/verify", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    secret: "JBSWY3DPEHPK3PXP",
+    code: userCode
+  })
+}).then(r => r.json());
+
+if(valid) alert("✅ Verified!");
+else alert("❌ Invalid TOTP code");
+```
+#### Usage (with Auth-verify client):
+```js
+const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+
+const valid = auth.post("/api/totp/verify").verify(userCode);
+if(valid) alert("✅ Verified!");
+else alert("❌ Invalid TOTP code");
+```
+### 5️⃣ API Reference Table
+
+| Endpoint           | Method | Description                   | Payload                     | Response                                             |
+| ------------------ | ------ | ----------------------------- | --------------------------- | ---------------------------------------------------- |
+| `/api/totp/secret` | GET    | Generate a Base32 secret      | None                        | `{ success: true, secret: "..." }`                   |
+| `/api/totp/uri`    | POST   | Convert secret to otpauth URI | `{ secret, label, issuer }` | `{ success: true, uri: "..." }`                      |
+| `/api/totp/qrcode` | POST   | Generate QR code from URI     | `{ uri }`                   | `{ success: true, qr: "data:image/png;base64,..." }` |
+| `/api/totp/verify` | POST   | Verify user TOTP code         | `{ secret, code, window? }` | `{ success: true, valid: true/false }`               |
+
+---
+
+## 🗝️ Passkey (WebAuthn)
+
+## 🔑 Passkey Authentication — AuthVerify Frontend + Backend Guide
+This guide explains how to integrate Passkey (WebAuthn) authentication using the AuthVerify ecosystem — including both:
+ - 🧠 **Backend:** `PasskeyManager` (Node.js)
+ - 💻 **Frontend:** `window.AuthVerify` wrapper (Browser)
+
+### ⚙️ 1. Backend Setup (Node.js)
+Import and configure `AuthVerify`:
+```js
+const express = require("express");
+const AuthVerify = require("auth-verify");
+const app = express();
+
+app.use(express.json());
+
+const auth = new AuthVerify({
+  rpName: "AuthVerifyApp",   // Display name in browser prompt
+  storeTokens: "memory",     // or "redis"
+  passExp: "2m",             // Challenge expiration
+});
+```
+
+### 🧩 2. Passkey Registration API
+#### ✅ `POST /api/register/start`
+Generate registration challenge for a new user.
+```js
+app.post("/api/register/start", async (req, res) => {
+  const user = req.body.user; // e.g. { id: "u123", username: "john_doe" }
+  await auth.passkey.register(user);
+  res.json(auth.passkey.getOptions());
+});
+```
+#### ✅ `POST /api/register/finish`
+Verify attestation and save credential.
+```js
+app.post("/api/register/finish", async (req, res) => {
+  const result = await auth.passkey.finish(req.body);
+  res.json(result);
+});
+```
+Example successful response:
+```json
+{
+  "status": "ok",
+  "user": {
+    "id": "u123",
+    "username": "john_doe",
+    "credentials": [
+      {
+        "id": "AaBbCcDdEe...",
+        "publicKey": "-----BEGIN PUBLIC KEY-----...",
+        "signCount": 0
+      }
+    ]
+  },
+  "credentialId": "AaBbCcDdEe..."
 }
 ```
+### 🔐 3. Passkey Login API
+#### ✅ `POST /api/login/start`
+Generate login challenge for existing user.
+```js
+app.post("/api/login/start", async (req, res) => {
+  const user = req.body.user; // same user object used at registration
+  await auth.passkey.login(user);
+  res.json(auth.passkey.getOptions());
+});
+```
+#### ✅ `POST /api/login/finish`
+Verify user assertion (digital signature).
+```js
+app.post("/api/login/finish", async (req, res) => {
+  const result = await auth.passkey.finish(req.body);
+  res.json(result);
+});
+```
+Successful login:
+```json
+{
+  "status": "ok",
+  "user": { "id": "u123", "username": "john_doe" }
+}
+```
+### 💻 4. Frontend Integration (Browser)
+Include your frontend wrapper (already built as `window.AuthVerify`):
+```html
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+<script>
+  const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+</script>
+```
+### ⚡ 5. Frontend Methods
+#### 🧱 `.post(url) / .get(url)`
+Set endpoint for POST/GET requests before calling `.data()`.
+#### ⚙️ `.data(payload)`
+Send JSON to backend and return response.
+
+### 🧩 6. Passkey Registration (Frontend)
+#### 🚀 Full Flow Example
+```js
+const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+
+auth
+  .start("/api/register/start")
+  .finish("/api/register/finish")
+  .registerPasskey({ id: "u123", username: "john_doe" })
+  .then(result => console.log("✅ Registered:", result))
+  .catch(err => console.error("❌ Error:", err));
+```
+
+### 🧠 Step Breakdown
+##### 1️⃣ **Frontend → Backend:** `/api/register/start`
+Sends `{ user }` and gets WebAuthn challenge/options.
+##### 2️⃣ **Browser:**
+Calls `navigator.credentials.create({ publicKey })`
+Prompts user for biometric or security key registration.
+
+##### 3️⃣ **Frontend → Backend:** `/api/register/finish`
+Sends credential data (`clientDataJSON`, `attestationObject`, etc.)
+
+##### 4️⃣ **Backend:**
+Validates and stores public key in user credentials.
+
+### 🔐 7. Passkey Login (Frontend)
+#### 🚀 Full Flow Example
+```js
+auth
+  .start("/api/login/start")
+  .finish("/api/login/finish")
+  .loginPasskey({ id: "u123", username: "john_doe" })
+  .then(result => console.log("✅ Logged in:", result))
+  .catch(err => console.error("❌ Error:", err));
+```
+#### 🧠 Step Breakdown
+##### 1️⃣ **Frontend → Backend:** `/api/login/start`
+Sends `{ user, login: true }` to get challenge and `allowCredentials`.
+##### 2️⃣ **Browser:**
+Calls `navigator.credentials.get({ publicKey })`.
+##### 3️⃣ **Frontend → Backend:** `/api/login/finish`
+Sends credential signature data (`authenticatorData`, `signature`, etc.)
+##### 4️⃣ **Backend:**
+Verifies signature using stored public key.
+
+### 🧠 8. Quick Reference
+| Layer    | Method                           | Description                  |
+| -------- | -------------------------------- | ---------------------------- |
+| Backend  | `passkey.register(user)`         | Start registration           |
+| Backend  | `passkey.getOptions()`           | Return challenge for browser |
+| Backend  | `passkey.finish(clientResponse)` | Finish registration/login    |
+| Frontend | `.registerPasskey(user)`         | Full registration flow       |
+| Frontend | `.loginPasskey(user)`            | Full login flow              |
+| Frontend | `.start(url)`                    | Set “start” API route        |
+| Frontend | `.finish(url)`                   | Set “finish” API route       |
+
+### ✅ 9. Notes & Best Practices
+ - Use HTTPS in production (`navigator.credentials` requires secure origin)
+ - Always send real `user.id` (string, not numeric)
+ - Store public keys securely in DB after registration
+ - Set realistic expiration time for passkey challenges (`passExp`)
+ - Combine with your `JWTManager` for session generation after successful login
+
 ---
 
 ## auth-verify client
@@ -1078,7 +1276,7 @@ const AuthVerify = require('auth-verify');
 
 const auth = new AuthVerify({
   mlSecret: 'super_secret_key',
-  mlExp: '5m',
+  mlExpiry: '5m',
   appUrl: 'http://localhost:3000',
   storeTokens: 'memory'
 });
@@ -1328,6 +1526,7 @@ auth-verify/
 │  ├─ oauth.test.js
 │  ├─ totpmanager.test.js
 │  ├─ passkeymanager.test.js
+│  ├─ magiclinkmanager.test.js
 ├─ babel.config.js
 ├─ authverify.client.js
 ```
