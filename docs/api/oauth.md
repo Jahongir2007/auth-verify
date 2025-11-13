@@ -21,6 +21,7 @@ auth.oauth
 
 ### 🧩 Supported Providers
 The following providers are **built-in** and ready to use:
+
 | Provider    | Method                   | OAuth Version |
 | ----------- | ------------------------ | ------------- |
 | Google      | `auth.oauth.google()`    | v2            |
@@ -34,6 +35,12 @@ The following providers are **built-in** and ready to use:
 | Microsoft   | `auth.oauth.microsoft()` | v2            |
 | Telegram    | `auth.oauth.telegram()`  | Deep Link     |
 | WhatsApp    | `auth.oauth.whatsapp()`  | Deep Link     |
+| Reddit      | `auth.oauth.reddit()`    | v2            |
+| Yandex      | `auth.oauth.yandex()`    | v2            |
+| Tumblr      | `auth.oauth.tumblr()`    | v2            |
+| Mail.ru     | `auth.oauth.mailru()`    | v2            |
+| VK          | `auth.oauth.vk()`        | v2            |
+| Yahoo       | `auth.oauth.yahoo()`     | v2            |
 
 ### 🪄 Common Usage
 #### Step 1: Redirect user to provider
@@ -210,6 +217,91 @@ auth.oauth.whatsapp({ phoneNumberId: "1234567890", redirectUri });
 **Returns:**
 ```json
 { "message": "WhatsApp login uses QR/deep link auth" }
+```
+#### 🧱 Reddit Login
+**Scopes:** `identity`
+```js
+auth.oauth.reddit({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "name": "johndoe",
+  "id": "t2_123abc",
+  "icon_img": "https://styles.redditmedia.com/...",
+  "access_token": "abc123..."
+}
+```
+#### 🟥 Yandex Login
+**Scopes:** `login:email login:info`
+```js
+auth.oauth.yandex({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": "1234567",
+  "display_name": "John Doe",
+  "emails": ["john@yandex.ru"],
+  "default_email": "john@yandex.ru",
+  "access_token": "y0_AgAAA..."
+}
+```
+#### 🌐 Tumblr Login
+**Scopes:** `basic write offline_access`
+```js
+auth.oauth.tumblr({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "name": "johndoe",
+  "blogs": [{ "name": "myblog", "title": "My Tumblr Blog" }],
+  "access_token": "xyz..."
+}
+```
+#### ✉️ Mail.ru Login
+**Scopes:** `userinfo.email`
+```js
+auth.oauth.mailru({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": "123456",
+  "email": "user@mail.ru",
+  "name": "John Doe",
+  "access_token": "abc123..."
+}
+```
+#### 🧍 VK (VKontakte) Login
+**Scopes:** `email`
+```js
+auth.oauth.vk({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": 987654,
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john@example.com",
+  "access_token": "vk1.a.abc..."
+}
+```
+#### 💜 Yahoo Login
+**Scopes:** `openid profile email`
+```js
+auth.oauth.yahoo({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "sub": "12345",
+  "email": "john@yahoo.com",
+  "name": "John Doe",
+  "access_token": "y0_AgA..."
+}
 ```
 ### 🧩 Custom OAuth Provider
 You can register your own provider logic:
