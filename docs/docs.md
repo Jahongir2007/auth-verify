@@ -1748,7 +1748,7 @@ auth-verify/
 │  ├─ passkeymanager.test.js
 │  ├─ magiclinkmanager.test.js
 ├─ babel.config.js
-├─ authverify.client.js
+├─ auth-verify.client.js
 ```
 
 ---
