@@ -100,6 +100,7 @@ const newTokens = auth.jwt.refresh(refreshToken);
  - Validates the refresh token.
  - Issues a new access token and refresh token pair.
  - Throws an error if the token is invalid or expired.
+
 **Parameters:**
 | Name         | Type   | Description                  |
 | ------------ | ------ | ---------------------------- |
