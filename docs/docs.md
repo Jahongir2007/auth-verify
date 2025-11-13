@@ -12,6 +12,7 @@
  - [Magic Links](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-magiclink-passwordless-login-new-in-v180)
  - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
  - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#sessionmanager)
+ - [Crypto hashing](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#sessionmanager)
 ---
 
 ## 🧩 Installation
@@ -693,6 +694,7 @@ app.post("/api/register/start", async (req, res) => {
   res.json(auth.passkey.getOptions());
 });
 ```
+> `auth.issue()` can be used for saving passkey in any device
 #### ✅ `POST /api/register/finish`
 Verify attestation and save credential.
 ```js
@@ -747,7 +749,7 @@ Successful login:
 ### 💻 4. Frontend Integration (Browser)
 Include your frontend wrapper (already built as `window.AuthVerify`):
 ```html
-<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
 <script>
   const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
 </script>
@@ -758,7 +760,7 @@ Set endpoint for POST/GET requests before calling `.data()`.
 #### ⚙️ `.data(payload)`
 Send JSON to backend and return response.
 
-### 🧩 6. Passkey Registration (Frontend)
+<!-- ### 🧩 6. Passkey Registration (Frontend)
 #### 🚀 Full Flow Example
 ```js
 const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
@@ -769,7 +771,7 @@ auth
   .registerPasskey({ id: "u123", username: "john_doe" })
   .then(result => console.log("✅ Registered:", result))
   .catch(err => console.error("❌ Error:", err));
-```
+``` -->
 
 ### 🧠 Step Breakdown
 ##### 1️⃣ **Frontend → Backend:** `/api/register/start`
@@ -784,7 +786,7 @@ Sends credential data (`clientDataJSON`, `attestationObject`, etc.)
 ##### 4️⃣ **Backend:**
 Validates and stores public key in user credentials.
 
-### 🔐 7. Passkey Login (Frontend)
+<!-- ### 🔐 7. Passkey Login (Frontend)
 #### 🚀 Full Flow Example
 ```js
 auth
@@ -793,7 +795,7 @@ auth
   .loginPasskey({ id: "u123", username: "john_doe" })
   .then(result => console.log("✅ Logged in:", result))
   .catch(err => console.error("❌ Error:", err));
-```
+``` -->
 #### 🧠 Step Breakdown
 ##### 1️⃣ **Frontend → Backend:** `/api/login/start`
 Sends `{ user, login: true }` to get challenge and `allowCredentials`.
@@ -810,10 +812,6 @@ Verifies signature using stored public key.
 | Backend  | `passkey.register(user)`         | Start registration           |
 | Backend  | `passkey.getOptions()`           | Return challenge for browser |
 | Backend  | `passkey.finish(clientResponse)` | Finish registration/login    |
-| Frontend | `.registerPasskey(user)`         | Full registration flow       |
-| Frontend | `.loginPasskey(user)`            | Full login flow              |
-| Frontend | `.start(url)`                    | Set “start” API route        |
-| Frontend | `.finish(url)`                   | Set “finish” API route       |
 
 ### ✅ 9. Notes & Best Practices
  - Use HTTPS in production (`navigator.credentials` requires secure origin)
@@ -824,130 +822,121 @@ Verifies signature using stored public key.
 
 ---
 
-## auth-verify client
-### 1️⃣ Introduction
+## 🔑 AuthVerify Client Guide
+This client is designed to **interact with the backend AuthVerify API** for passkeys / WebAuthn credentials.
+It **does not require body-parser or any server-side logic** on the frontend.
 
-**AuthVerify Client** is a lightweight frontend JavaScript library for TOTP / JWT authentication.
-It works with your backend APIs to:
- - Display QR codes for TOTP enrollment
- - Verify user OTP codes
- - Request JWT tokens from backend
- - Send authenticated requests easily
- - **Register a passkey** (create a new credential)
- - **Login with a passkey** (authenticate existing credential)
- - Handle **Base64URL decoding**, **ArrayBuffer conversion**, and **backend communication** automatically
- - Easily integrate with your Node.js backend using `auth-verify`
-Works like jQuery: just include the script in HTML, no module or bundler needed.
-
-## 2️⃣ Installation
+### 📦 Import
 ```html
-<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+<!-- ✅ Import auth-verify client -->
+  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
 ```
-
-### 3️⃣ Initialization
+### ⚙️ Initialization
 ```js
-const qrImage = document.getElementById('qrImage');
-
 const auth = new AuthVerify({
-  apiBase: 'http://localhost:3000',  // Your backend API base URL
-  qrEl: qrImage                       // Image element to display QR
+  apiBase: "http://localhost:3000",
+  qrEl: document.getElementById("qr") // optional, for QR codes
 });
 ```
 
-### 4️⃣ Generating QR Code
+| Option    | Type               | Default                   | Description                          |
+| --------- | ------------------ | ------------------------- | ------------------------------------ |
+| `apiBase` | `string`           | `'http://localhost:3000'` | Backend API base URL                 |
+| `qrEl`    | `HTMLImageElement` | `null`                    | Optional element to display QR codes |
+
+### 📬 Methods
+#### 1️⃣ `post(url)`
+Sets the POST endpoint for the next request.
 ```js
-auth.get('/api/qr').qr();
+auth.post("/start-passkey");
 ```
- - Fetches QR code from backend
- - Displays it in the `qrEl` image element
-
-### 5️⃣ Sending Data / JWT Requests
+#### 2️⃣ `get(url)`
+Sets the GET endpoint for the next request.
 ```js
-const payload = { name: 'John', age: 23 };
-
-const token = await auth.post('/api/sign-jwt').data(payload);
-console.log('JWT token:', token);
+auth.get("/fetch-qr");
 ```
- - `post(url)` sets endpoint
- - `data(payload)` sends JSON payload
- - If backend returns a token, it is stored in `auth.jwt`
-
-### 6️⃣ Verifying OTP
+#### 3️⃣ `qr()`
+Fetches a QR code from the backend and renders it in `qrEl`.
 ```js
-const result = await auth.post('/api/verify-totp').verify('123456');
-console.log(result); // e.g. { verified: true }
+await auth.get("/fetch-qr").qr();
 ```
- - Wraps the OTP code in `{ code: '...' }`
- - Sends to backend for verification
+##### Behavior:
+ - If `qrEl` exists, its `src` will be set to the QR image returned by the backend.
+ - Logs an error if no QR or fetch fails.
 
-### 7️⃣ Sending Authenticated Requests
+#### 4️⃣ `data(payload)`
+Sends a POST request with JSON payload to the set endpoint.
 ```js
-const profile = await fetch('http://localhost:3000/api/profile', {
-  headers: auth.header()
-}).then(res => res.json());
-
-console.log(profile);
+const response = await auth.post("/verify-otp").data({ code: "123456" });
+console.log(response);
 ```
- - `auth.header()` returns `{ Authorization: "Bearer <jwt>" }`
- - Easy to attach JWT to any request
-
-### Passkey part (new in v1.8.0)
-#### API Methods
-##### `start(route)`
-Sets the backend endpoint to start a **registration or login flow**.
+#### 5️⃣ `header()`
+Returns an authorization header if `jwt` exists.
 ```js
-auth.start('/api/register/start');  // registration start
-auth.start('/api/login/start');     // login start
+const headers = auth.header();
+// { Authorization: 'Bearer <token>' }
 ```
-
-#### `finish(route)`
-Sets the backend endpoint to **finish the flow** (verify credential/assertion).
+#### 6️⃣ `verify(code)`
+Shortcut for sending OTP / code to backend.
 ```js
-auth.finish('/api/register/finish'); // registration finish
-auth.finish('/api/login/finish');    // login finish
+const result = await auth.verify("123456");
 ```
-
-#### `registerPasskey(user)`
-Registers a new passkey for the user.
-##### Parameters:
-| Param | Type   | Description                                                            |
-| ----- | ------ | ---------------------------------------------------------------------- |
-| user  | Object | `{ id: "user1", username: "john_doe" }` — user info to send to backend |
-
-##### Returns:
-`Promise<Object>` — result from backend (`{ success: true/false, message: "..." }`)
-##### Example:
+#### 7️⃣ `base64urlToUint8Array(base64url)`
+Helper to decode Base64URL strings (used for WebAuthn challenges).
 ```js
-auth.start('/api/register/start').finish('/api/register/finish');
+const arr = auth.base64urlToUint8Array("BASE64URL_STRING");
+```
+#### 8️⃣ `issue(publicKey)`
+Creates a WebAuthn credential on the client (passkey).
+```js
+// 1️⃣ Get registration options from backend
+const publicKey = await auth.post("/start-passkey").data({ user: { id: "user123", name: "Alice" } });
 
-const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
+// 2️⃣ Issue credential in browser
+const credentialData = await auth.issue(publicKey);
 
-if(result.success) alert("Passkey registered!");
-else alert("Error: " + result.message);
+// 3️⃣ Send credential back to backend
+const result = await auth.post("/finish-passkey").data(credentialData);
+console.log(result);
 ```
 
-##### What it does internally:
-1. Calls `/start` endpoint → gets assertion options.
-2. Decodes `challenge` and `allowCredentials[].id` from Base64URL → Uint8Array.
-3. Calls `navigator.credentials.get({ publicKey })`.
-4. Converts ArrayBuffers to Base64.
-5. Sends assertion to `/finish` endpoint for verification.
-#### `base64urlToUint8Array(base64url)`
-Helper to convert Base64URL string to `Uint8Array`.
-Used internally in registration & login flow. Devs can use it for custom WebAuthn handling if needed.
-### 8️⃣ Method Summary
-| Method                  | Description                                                                                    |
-| ----------------------- | ---------------------------------------------------------------------------------------------- |
-| `get(url)`              | Set GET endpoint                                                                               |
-| `post(url)`             | Set POST endpoint                                                                              |
-| `qr()`                  | Fetch QR from backend and display                                                              |
-| `data(payload)`         | Send payload to backend; stores JWT if returned                                                |
-| `verify(code)`          | Send OTP code to backend                                                                       |
-| `header()`              | Return JWT auth header object                                                                  |
-| `start(route)`          | Set backend endpoint to **start registration or login**                                        |
-| `finish(route)`         | Set backend endpoint to **finish registration or login**                                       |
-| `registerPasskey(user)` | Full registration flow: fetch challenge, decode, create credential in browser, send to backend |
-| `loginPasskey(user)`    | Full login flow: fetch assertion, decode, get credential from browser, send to backend         |
+| Step | Description                                                                         |
+| ---- | ----------------------------------------------------------------------------------- |
+| 1    | Fetch `publicKey` options from backend                                              |
+| 2    | Decode challenge & user ID, create credential with `navigator.credentials.create()` |
+| 3    | Convert ArrayBuffers to Base64 and return structured object                         |
+| 4    | Send credential to backend via `post()`                                             |
+
+##### Returned object:
+```js
+{
+  id: "...",
+  rawId: "...",
+  type: "public-key",
+  response: {
+    clientDataJSON: "...",
+    attestationObject: "..."
+  }
+}
+```
+
+### 🧪 Example Full Flow
+```js
+(async () => {
+  const auth = new AuthVerify({ apiBase: "http://localhost:3000", qrEl: document.getElementById("qr") });
+
+  // Display QR from backend
+  await auth.get("/fetch-qr").qr();
+
+  // Create a passkey
+  const publicKey = await auth.post("/start-passkey").data({ user: { id: "user123", name: "Alice" } });
+  const credential = await auth.issue(publicKey);
+
+  // Send back to backend
+  const result = await auth.post("/finish-passkey").data(credential);
+  console.log(result);
+})();
+```
 
 ### 9️⃣ Example HTML
 ```html
@@ -956,7 +945,7 @@ Used internally in registration & login flow. Devs can use it for custom WebAuth
 <button id="getQRBtn">Get QR</button>
 <button id="sendBtn">Send Data</button>
 
-<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
 <script>
 const qrImage = document.getElementById('qrImage');
 const responseDiv = document.getElementById('response');
@@ -973,43 +962,6 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
 </script>
 ```
 
-### Passkey example
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>AuthVerify Demo</title>
-</head>
-<body>
-  <h1>AuthVerify Passkey Demo</h1>
-  <button id="register">Register Passkey</button>
-  <button id="login">Login with Passkey</button>
-
-  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
-  <script>
-    const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
-
-    // Registration setup
-    auth.start('/api/register/start').finish('/api/register/finish');
-    document.getElementById('register').addEventListener('click', async () => {
-      const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
-      alert(result.message);
-    });
-
-    // Login setup
-    auth.start('/api/login/start').finish('/api/login/finish');
-    document.getElementById('login').addEventListener('click', async () => {
-      const result = await auth.loginPasskey({ id: 'user1', username: 'john_doe' });
-      alert(result.message);
-    });
-  </script>
-</body>
-</html>
-```
-✅ Fully functional frontend passkey demo
-✅ One line registration / login for devs
-✅ Automatic Base64URL decoding and ArrayBuffer handling
-
 ### 10️⃣ Tips for Developers
  - Always call `auth.get('/api/qr').qr()` **after page loads**
  - Use `auth.header()` for any authenticated request
@@ -1020,253 +972,350 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
 
 ---
 
-## 🌍 OAuth 2.0 Integration (v1.2.0+)
-`auth.oauth` supports login via Google, Facebook, GitHub, X (Twitter), Linkedin, Microsoft, Telegram, Slack, WhatsApp, Apple and Discord.
-### Providers & Routes table
-| Provider    | Redirect URL      | Callback URL               | Scopes / Notes                         |
-| ----------- | ----------------- | -------------------------- | -------------------------------------- |
-| Google      | `/auth/google`    | `/auth/google/callback`    | `openid email profile`                 |
-| Facebook    | `/auth/facebook`  | `/auth/facebook/callback`  | `email,public_profile`                 |
-| GitHub      | `/auth/github`    | `/auth/github/callback`    | `user:email`                           |
-| X (Twitter) | `/auth/x`         | `/auth/x/callback`         | `tweet.read users.read offline.access` |
-| LinkedIn    | `/auth/linkedin`  | `/auth/linkedin/callback`  | `r_liteprofile r_emailaddress`         |
-| Microsoft   | `/auth/microsoft` | `/auth/microsoft/callback` | `User.Read`                            |
-| Telegram    | `/auth/telegram`  | `/auth/telegram/callback`  | Bot deep-link                          |
-| Slack       | `/auth/slack`     | `/auth/slack/callback`     | `identity.basic identity.email`        |
-| WhatsApp    | `/auth/whatsapp`  | `/auth/whatsapp/callback`  | QR / deep-link                         |
-| Apple       | `/auth/apple`     | `/auth/apple/callback`     | `name email`                           |
-| Discord     | `/auth/discord`   | `/auth/discord/callback`   | `identify email`                       |
+## 🔐 OAuth Manager — `auth-verify`
+The **OAuthManager** in `auth-verify` provides an easy and unified way to integrate popular social logins such as Google, GitHub, Facebook, Twitter (X), LinkedIn, and others.
+Each provider offers two main methods:
+ - `redirect(res)` → Redirects users to provider’s authorization page
+ - `callback(code)` → Exchanges authorization code for access token and retrieves user data
 
-### Example (Google Login with Express)
+### 📦 Import
 ```js
-const express = require('express');
 const AuthVerify = require("auth-verify");
-const app = express();
-app.use(express.json());
-const auth = new AuthVerify({ jwtSecret: 's', storeTokens: 'memory'});
+const auth = new AuthVerify();
+```
+Then access:
+```js
+auth.oauth
+```
 
-const google = auth.oauth.google({clientId: 'YOUR_CLIENT_ID', clientSecret: 'YOUR_CLIENT_SECRET', redirectUri: 'http://localhost:3000/auth/google/callback'});
-app.get('/', async (req, res) => {
-      res.send(`
-    <h1>Login with Google</h1>
-    <a href="/auth/google">Login</a>
-  `);
-});
+### ⚙️ Constructor Options
+| Option      | Type     | Default | Description                                  |
+| ----------- | -------- | ------- | -------------------------------------------- |
+| `providers` | `object` | `{}`    | Register custom OAuth providers dynamically. |
 
+### 🧩 Supported Providers
+The following providers are **built-in** and ready to use:
 
-app.get('/auth/google', (req, res) => google.redirect(res));
+| Provider    | Method                   | OAuth Version |
+| ----------- | ------------------------ | ------------- |
+| Google      | `auth.oauth.google()`    | v2            |
+| Facebook    | `auth.oauth.facebook()`  | v2            |
+| GitHub      | `auth.oauth.github()`    | v2            |
+| Twitter (X) | `auth.oauth.x()`         | v2            |
+| LinkedIn    | `auth.oauth.linkedin()`  | v2            |
+| Apple       | `auth.oauth.apple()`     | v2            |
+| Discord     | `auth.oauth.discord()`   | v2            |
+| Slack       | `auth.oauth.slack()`     | v2            |
+| Microsoft   | `auth.oauth.microsoft()` | v2            |
+| Telegram    | `auth.oauth.telegram()`  | Deep Link     |
+| WhatsApp    | `auth.oauth.whatsapp()`  | Deep Link     |
+| Reddit      | `auth.oauth.reddit()`    | v2            |
+| Yandex      | `auth.oauth.yandex()`    | v2            |
+| Tumblr      | `auth.oauth.tumblr()`    | v2            |
+| Mail.ru     | `auth.oauth.mailru()`    | v2            |
+| VK          | `auth.oauth.vk()`        | v2            |
+| Yahoo       | `auth.oauth.yahoo()`     | v2            |
 
-app.get('/auth/google/callback', async (req, res)=>{
-    const code = req.query.code;
-    try {
-        const user = await google.callback(code);
-        res.send(`
-            <h2>Welcome, ${user.name}!</h2>
-            <img src="${user.picture}" width="100" style="border-radius:50%">
-            <p>Email: ${user.email}</p>
-            <p>Access Token: ${user.access_token.slice(0, 20)}...</p>
-        `);
-    } catch(err){
-        res.status(500).send("Error: " + err.message);
-    }
-});
-
-app.listen(3000, ()=>{
-    console.log('Server is running...');
+### 🪄 Common Usage
+#### Step 1: Redirect user to provider
+```js
+app.get("/auth/google", (req, res) => {
+  auth.oauth.google({
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    redirectUri: "http://localhost:3000/auth/google/callback"
+  }).redirect(res);
 });
 ```
----
-### API documentation for OAuth
- - `auth.oauth.google({...})` for making connection to your Google cloud app.
- - `google.redirect(res)` for sending user/client to the Google OAuth page for verifying and selecting his accaount
- - `google.callback(code)` for exchanging server code to the user/client token.
-
-### Other examples with other platforms
+#### Step 2: Handle callback and get user data
 ```js
-const express = require('express');
-const AuthVerify = require("auth-verify");
-const app = express();
-app.use(express.json());
-const auth = new AuthVerify({ jwtSecret: 's', storeTokens: 'memory'});
-
-// --- Example: FACEBOOK LOGIN ---
-const facebook = auth.oauth.facebook({
-  clientId: "YOUR_FB_APP_ID",
-  clientSecret: "YOUR_FB_APP_SECRET",
-  redirectUri: "http://localhost:3000/auth/facebook/callback",
-});
-
-// --- Example: GITHUB LOGIN ---
-const github = auth.oauth.github({
-  clientId: "YOUR_GITHUB_CLIENT_ID",
-  clientSecret: "YOUR_GITHUB_CLIENT_SECRET",
-  redirectUri: "http://localhost:3000/auth/github/callback",
-});
-
-// --- Example: X (Twitter) LOGIN ---
-const twitter = auth.oauth.x({
-  clientId: "YOUR_TWITTER_CLIENT_ID",
-  clientSecret: "YOUR_TWITTER_CLIENT_SECRET",
-  redirectUri: "http://localhost:3000/auth/x/callback",
-});
-
-// --- Example: Linkedin LOGIN ---
-const linkedin = auth.oauth.linkedin({
-  clientId: "YOUR_LINKEDIN_CLIENT_ID",
-  clientSecret: "YOUR_LINKEDIN_CLIENT_SECRET",
-  redirectUri: "http://localhost:3000/auth/linkedin/callback"
-});
-
-// --- MICROSOFT ---
-const microsoft = auth.oauth.microsoft({
-  clientId: "YOUR_MICROSOFT_CLIENT_ID",
-  clientSecret: "YOUR_MICROSOFT_CLIENT_SECRET",
-  redirectUri: "http://localhost:3000/auth/microsoft/callback"
-});
-
-app.get("/auth/microsoft", (req, res) => microsoft.redirect(res));
-
-app.get("/auth/microsoft/callback", async (req, res) => {
+app.get("/auth/google/callback", async (req, res) => {
   try {
-    const { code } = req.query;
-    const user = await microsoft.callback(code);
-    res.json({ success: true, provider: "microsoft", user });
+    const data = await auth.oauth.google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: "http://localhost:3000/auth/google/callback"
+    }).callback(req.query.code);
+
+    res.json({ success: true, user: data });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
+```
+### 🌍 Provider Reference
+Each provider returns `{ redirect, callback }`.
+Below are provider-specific examples and scopes.
 
-// --- TELEGRAM ---
-const telegram = auth.oauth.telegram({
-  botId: "YOUR_BOT_ID",
-  redirectUri: "http://localhost:3000/auth/telegram/callback"
+#### 🟢 Google Login
+**Scopes:** `openid email profile`
+```js
+auth.oauth.google({
+  clientId,
+  clientSecret,
+  redirectUri
 });
+```
+**Returns user:**
+```json
+{
+  "email": "user@gmail.com",
+  "name": "John Doe",
+  "picture": "https://...",
+  "access_token": "ya29.a0..."
+}
+```
+#### 🔵 Facebook Login
+**Scopes:** `email, public_profile`
+```js
+auth.oauth.facebook({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```json
+{
+  "id": "123456789",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "picture": { "data": { "url": "https://..." } },
+  "access_token": "EAAJ..."
+}
+```
+#### ⚫ GitHub Login
+**Scopes:** `user:email`
+```js
+auth.oauth.github({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```json
+{
+  "login": "johndoe",
+  "id": 123456,
+  "email": "john@example.com",
+  "avatar_url": "https://github.com/images/...",
+  "access_token": "gho_..."
+}
+```
+#### 🐦 Twitter (X) Login
+**Scopes:** `tweet.read users.read offline.access`
+```js
+auth.oauth.x({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```json
+{
+  "data": { "id": "12345", "name": "John Doe", "username": "johndoe" },
+  "access_token": "2.abc..."
+}
+```
+#### 💼 LinkedIn Login
+**Scopes:** `r_liteprofile r_emailaddress`
+```js
+auth.oauth.linkedin({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```json
+{
+  "id": "A1B2C3D4",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "access_token": "AQW..."
+}
+```
+#### 🍎 Apple Login
+**Scopes:** `name email`
+```js
+auth.oauth.apple({ clientId, clientSecret, redirectUri });
+```
+**Returns:**
+```json
+{
+  "access_token": "eyJraWQiOi...",
+  "id_token": "...",
+  "refresh_token": "...",
+  "expires_in": 3600
+}
+```
+#### 💬 Discord Login
+**Scopes:** `identify email`
+```js
+auth.oauth.discord({ clientId, clientSecret, redirectUri });
+```
+**Returns:**
+```json
+{
+  "id": "123456789",
+  "username": "john",
+  "email": "john@example.com",
+  "access_token": "abc123..."
+}
+```
+#### 🧰 Slack Login
+**Scopes:** `identity.basic identity.email`
+```js
+auth.oauth.slack({ clientId, clientSecret, redirectUri });
+```
+**Returns:**
+```json
+{
+  "ok": true,
+  "access_token": "xoxp-...",
+  "authed_user": { "id": "U1234", "scope": "identity.basic,identity.email" }
+}
+```
+#### 🪟 Microsoft Login
+**Scopes:*** `User.Read`
+```js
+auth.oauth.microsoft({ clientId, clientSecret, redirectUri });
+```
+**Returns token:**
+```json
+{
+  "token_type": "Bearer",
+  "expires_in": 3599,
+  "access_token": "EwB4A8l6..."
+}
+```
+#### 💬 Telegram Login (Deep Link)
+```js
+auth.oauth.telegram({ botId: "YourBotName", redirectUri });
+```
+**Note:** Telegram handles authentication through deep links.
+**Returns:**
+```json
+{ "message": "Telegram login uses deep link auth" }
+```
+#### 🟢 WhatsApp Login (Deep Link)
+```js
+auth.oauth.whatsapp({ phoneNumberId: "1234567890", redirectUri });
+```
+**Note:** Usually handled via QR code or direct chat.
+**Returns:**
+```json
+{ "message": "WhatsApp login uses QR/deep link auth" }
+```
+#### 🧱 Reddit Login
+**Scopes:** `identity`
+```js
+auth.oauth.reddit({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "name": "johndoe",
+  "id": "t2_123abc",
+  "icon_img": "https://styles.redditmedia.com/...",
+  "access_token": "abc123..."
+}
+```
+#### 🟥 Yandex Login
+**Scopes:** `login:email login:info`
+```js
+auth.oauth.yandex({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": "1234567",
+  "display_name": "John Doe",
+  "emails": ["john@yandex.ru"],
+  "default_email": "john@yandex.ru",
+  "access_token": "y0_AgAAA..."
+}
+```
+#### 🌐 Tumblr Login
+**Scopes:** `basic write offline_access`
+```js
+auth.oauth.tumblr({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "name": "johndoe",
+  "blogs": [{ "name": "myblog", "title": "My Tumblr Blog" }],
+  "access_token": "xyz..."
+}
+```
+#### ✉️ Mail.ru Login
+**Scopes:** `userinfo.email`
+```js
+auth.oauth.mailru({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": "123456",
+  "email": "user@mail.ru",
+  "name": "John Doe",
+  "access_token": "abc123..."
+}
+```
+#### 🧍 VK (VKontakte) Login
+**Scopes:** `email`
+```js
+auth.oauth.vk({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "id": 987654,
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john@example.com",
+  "access_token": "vk1.a.abc..."
+}
+```
+#### 💜 Yahoo Login
+**Scopes:** `openid profile email`
+```js
+auth.oauth.yahoo({ clientId, clientSecret, redirectUri });
+```
+**Returns user:**
+```js
+{
+  "sub": "12345",
+  "email": "john@yahoo.com",
+  "name": "John Doe",
+  "access_token": "y0_AgA..."
+}
+```
+### 🧩 Custom OAuth Provider
+You can register your own provider logic:
+```js
+auth.oauth.register("custom", ({ clientId, clientSecret, redirectUri }) => ({
+  redirect(res) {
+    res.redirect("https://custom-oauth.com/auth");
+  },
+  async callback(code) {
+    return { code, message: "Custom provider handled!" };
+  },
+}));
 
-app.get("/auth/telegram", (req, res) => telegram.redirect(res));
+// Usage:
+auth.oauth.use("custom", { clientId, clientSecret, redirectUri });
+```
 
-app.get("/auth/telegram/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const result = await telegram.callback(code);
-    res.json({ success: true, provider: "telegram", ...result });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
+### 🔒 Error Handling
+Each `callback()` method may throw:
+ - `OAuth Error: invalid_client`
+ - `OAuth Error: invalid_grant`
+ - `OAuth Error: unauthorized_client`
+ - `OAuth Error: access_denied`
+Always wrap in try/catch:
+```js
+try {
+  const user = await auth.oauth.google(...).callback(code);
+} catch (err) {
+  console.error("Login failed:", err.message);
+}
+```
 
-// --- SLACK ---
-const slack = auth.oauth.slack({
-  clientId: "YOUR_SLACK_CLIENT_ID",
-  clientSecret: "YOUR_SLACK_CLIENT_SECRET",
-  redirectUri: "http://localhost:3000/auth/slack/callback"
-});
+### 💡 Notes
+ - Every provider uses **OAuth 2.0 Authorization Code flow**.
+ - `redirect(res)` is server-side only (Node.js Express compatible).
+ - Works perfectly inside your `auth-verify` unified wrapper.
 
-app.get("/auth/slack", (req, res) => slack.redirect(res));
-
-app.get("/auth/slack/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const user = await slack.callback(code);
-    res.json({ success: true, provider: "slack", user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// --- WHATSAPP ---
-const whatsapp = auth.oauth.whatsapp({
-  phoneNumberId: "YOUR_PHONE_ID",
-  redirectUri: "http://localhost:3000/auth/whatsapp/callback"
-});
-
-app.get("/auth/whatsapp", (req, res) => whatsapp.redirect(res));
-
-app.get("/auth/whatsapp/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const result = await whatsapp.callback(code);
-    res.json({ success: true, provider: "whatsapp", ...result });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// ===== FACEBOOK ROUTES =====
-app.get("/auth/facebook", (req, res) => facebook.redirect(res));
-
-app.get("/auth/facebook/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const user = await facebook.callback(code);
-    res.json({ success: true, provider: "facebook", user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-
-// ===== GITHUB ROUTES =====
-app.get("/auth/github", (req, res) => github.redirect(res));
-
-app.get("/auth/github/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const user = await github.callback(code);
-    res.json({ success: true, provider: "github", user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-
-// ===== X (TWITTER) ROUTES =====
-app.get("/auth/x", (req, res) => twitter.redirect(res));
-
-app.get("/auth/x/callback", async (req, res) => {
-  try {
-    const { code } = req.query;
-    const user = await twitter.callback(code);
-    res.json({ success: true, provider: "x", user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-  
-// ==== LINKEDIN ROUTES ====
-app.get("/auth/linkedin", (req, res) => linkedin.redirect(res));
-
-app.get("/auth/linkedin/callback", async (req, res)=>{
-  try{
-    const { code } = req.query;
-    const user = await linkedin.callback(code);
-    res.json({ success: true, provider: "linkedin", user });
-  }catch(err){
-    res.status(400).json({ error: err.message });
-  }
-});
-
-
-app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-
-```   
-
-### ✅ Notes for Devs
-  1. Each provider has **redirect** and **callback** URLs.
-  2. Scopes can be customized per provider.
-  3. **Telegram & WhatsApp** use deep-link / QR-style flows.
-  4. The result of `callback()` is a JSON object containing the user info and `access_token` (except deep-link flows, which return code/messages).
-  5. You can **register custom providers** via:
-  ```js
-  auth.oauth.register("myCustom", (options) => {
-    return {
-      redirect(res) { /* redirect user */ },
-      callback: async (code) => { /* handle callback */ }
-    };
-  });
-  ```
 ---
 
-## 💌 Magiclink (Passwordless login) (New in v1.8.0)
+## 💌 Magiclink (Passwordless login) (v1.8.0+)
 The **Magic Link Manager** allows developers to implement **secure**, **passwordless login** using **email-based links**.
 Built directly into the AuthVerify SDK, it supports **Gmail**, **custom SMTP**, and token storage via **Memory** or **Redis**.
 
@@ -1479,6 +1528,123 @@ Notes:
 
 ---
 
+## 🔐 CryptoManager API Guide
+It supports both **PBKDF2** and **scrypt** algorithms for password or data hashing.
+
+### 🚀 Overview
+The `CryptoManager` class helps developers easily hash and verify passwords or any sensitive data
+using strong cryptographic functions. It supports both **Promise** and **callback** styles.
+
+### 🧩 Import and Setup
+```js
+const AuthVerify = require('auth-verify');
+
+// Default: pbkdf2 algorithm
+const auth = new AuthVerify({
+  hashAlg: 'pbkdf2', // or 'scrypt'
+  iterations: 100000,
+  keyLen: 64
+});
+```
+### 🔨 1️⃣ Hash Data
+#### Method
+```js
+async hash(data, [callback])
+```
+#### Description
+Hashes a string (like a password) using the specified algorithm and salt.
+You can use **Promise** or **callback** style.
+#### Parameters
+| Name       | Type        | Description                                  |
+| ---------- | ----------- | -------------------------------------------- |
+| `data`     | `string`    | The input data to hash (e.g. password)       |
+| `callback` | `function?` | Optional Node-style callback `(err, result)` |
+
+#### Returns
+An object containing:
+```js
+{
+  hashAlg: "pbkdf2" | "scrypt",
+  salt: "<random hex string>",
+  hash: "<hashed data in hex>"
+}
+```
+#### Example (Promise)
+```js
+const result = await auth.crypto.hash("myPassword123");
+console.log(result);
+// { hashAlg: 'pbkdf2', salt: '...', hash: '...' }
+```
+#### Example (Callback)
+```js
+auth.crypto.hash("myPassword123", (err, result) => {
+  if (err) return console.error(err);
+  console.log(result);
+});
+```
+
+### 🔍 2️⃣ Verify Data
+#### Method
+```js
+async verify(data, { hashAlg, salt, hash }, [callback])
+```
+#### Description
+Verifies whether a given input matches a stored hash.
+#### Parameters
+| Name                      | Type        | Description                                   |
+| ------------------------- | ----------- | --------------------------------------------- |
+| `data`                    | `string`    | The plaintext input (e.g. user password)      |
+| `{ hashAlg, salt, hash }` | `object`    | The hash object from `.hash()`                |
+| `callback`                | `function?` | Optional Node-style callback `(err, isValid)` |
+
+#### Returns
+A boolean value:
+ - `true` → data matches
+ - `false` → mismatch
+#### Example (Promise)
+```js
+const result = await cryptoManager.hash("secret123");
+const isValid = await cryptoManager.verify("secret123", result);
+console.log(isValid); // true
+```
+#### Example (Callback)
+```js
+const original = await cryptoManager.hash("secret123");
+
+cryptoManager.verify("secret123", original, (err, valid) => {
+  if (err) throw err;
+  console.log(valid); // true
+});
+```
+### 📊 3️⃣ Summary Table
+| Method                                              | Description                         | Returns                   | Async |
+| --------------------------------------------------- | ----------------------------------- | ------------------------- | ----- |
+| `hash(data, [callback])`                            | Hashes input using PBKDF2 or scrypt | `{ hashAlg, salt, hash }` | ✅     |
+| `verify(data, { hashAlg, salt, hash }, [callback])` | Verifies input against hash         | `boolean`                 | ✅     |
+
+### 🧠 Notes
+ - Both PBKDF2 and scrypt are **strong**, **salted**, **one-way** hashing algorithms.
+ - Use PBKDF2 for compatibility; use scrypt for better memory-hard protection.
+ - Salt ensures that each hash output is unique even for identical inputs.
+ - The default iteration count (100,000) is secure but can be increased for stronger protection.
+
+### 🧪 Example Full Flow
+```js
+(async () => {
+  const manager = new CryptoManager({ hashAlg: 'scrypt' });
+
+  // Hash password
+  const hashData = await manager.hash('MyStrongPassword');
+  console.log('Stored hash:', hashData);
+
+  // Verify password
+  const match = await manager.verify('MyStrongPassword', hashData);
+  console.log('Password valid:', match);
+})();
+```
+
+---
+
 ## Helpers
 
 `helpers/helper.js` exposes utility functions used by managers:
@@ -1512,6 +1678,7 @@ auth-verify/
 |  |  ├─ cookie/index.js
 │  ├─ /otp/index.js
 │  ├─ /magiclink/index.js
+│  ├─ /crypto/index.js
 │  ├─ totp/
 |  |  ├─ index.js
 |  |  ├─ base32.js
@@ -1520,6 +1687,7 @@ auth-verify/
 │  └─ helpers/helper.js
 ├─ tests/
 │  ├─ jwa.test.js
+│  ├─ cryptomanager.test.js
 │  ├─ jwtmanager.multitab.test.js
 │  ├─ jwtmanager.test.js
 │  ├─ otpmanager.test.js
