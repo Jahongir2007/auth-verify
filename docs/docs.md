@@ -4,7 +4,7 @@
  - [Installation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-installation)
  - [Initialization](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-example-initialize-library-commonjs)
  - [JWT](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-jwt-usage)
- - [OTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-otp-email--sms--telegram--custom-sender)
+ - [OTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-otp-email--sms--telegram--whatsapp-api--custom-sender)
  - [TOTP](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-totp-time-based-one-time-passwords--google-authenticator-support-v140)
  - [Passkeys](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#%EF%B8%8F-passkey-webauthn-v161)
  - [Auth-Verify client](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#auth-verify-client)
