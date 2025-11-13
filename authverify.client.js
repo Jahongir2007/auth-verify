@@ -80,95 +80,23 @@ window.AuthVerify = class AuthVerify {
     return new Uint8Array([...str].map(c => c.charCodeAt(0)));
   }
 
-  start(route){
-    this.startRegisterApi = route;
-    return this;
+  async issue(publicKey){
+    publicKey.challenge = this.base64urlToUint8Array(publicKey.challenge);
+    publicKey.user.id = this.base64urlToUint8Array(publicKey.user.id);
+    
+    const credential = await navigator.credentials.create({ publicKey });
+
+    const data = {
+      id: credential.id,
+      rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
+      type: credential.type,
+      response: {
+        clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
+        attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
+      },
+    };
+
+    return data;
   }
-
-  finish(route){
-    this.finishRegisterApi = route;
-    return this;
-  }
-
-  // -----------------------------
-  // REGISTER PASSKEY (full flow)
-  // -----------------------------
-  async registerPasskey(user) {
-    try {
-      // 1️⃣ Get registration options from backend
-      const publicKey = await this.post(`${this.startRegisterApi}`).data({user});
-
-      // 2️⃣ Decode challenge & user.id automatically
-      publicKey.challenge = this.base64urlToUint8Array(publicKey.challenge);
-      publicKey.user.id = this.base64urlToUint8Array(publicKey.user.id);
-
-      // 3️⃣ Ask browser to create credential
-      const credential = await navigator.credentials.create({ publicKey });
-
-      // 4️⃣ Convert ArrayBuffers to base64
-      const data = {
-        id: credential.id,
-        rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
-        type: credential.type,
-        response: {
-          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
-          attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
-        },
-      };
-
-      // 5️⃣ Send credential to backend to finish registration
-      const result = await this.post(`${this.finishRegisterApi}`).data(data);
-
-      return result;
-
-    } catch (err) {
-      console.error("[AuthVerify registerPasskey]", err);
-      return { error: true, message: err.message };
-    }
-  }
-
-  // -----------------------------
-// LOGIN / AUTHENTICATE PASSKEY
-// -----------------------------
-async loginPasskey(user) {
-        try {
-            // 1️⃣ Get assertion options (challenge) from backend
-            const publicKey = await this.post(`${this.startRegisterApi}`).data({ user, login: true });
-
-            // 2️⃣ Decode Base64URL fields
-            publicKey.challenge = this.base64urlToUint8Array(publicKey.challenge);
-            publicKey.allowCredentials = publicKey.allowCredentials.map(cred => ({
-            ...cred,
-            id: this.base64urlToUint8Array(cred.id)
-            }));
-
-            // 3️⃣ Ask browser to get credential
-            const credential = await navigator.credentials.get({ publicKey });
-
-            // 4️⃣ Convert ArrayBuffers to Base64
-            const data = {
-            id: credential.id,
-            rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
-            type: credential.type,
-            response: {
-                clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON))),
-                authenticatorData: btoa(String.fromCharCode(...new Uint8Array(credential.response.authenticatorData))),
-                signature: btoa(String.fromCharCode(...new Uint8Array(credential.response.signature))),
-                userHandle: credential.response.userHandle
-                ? btoa(String.fromCharCode(...new Uint8Array(credential.response.userHandle)))
-                : null,
-            },
-            };
-
-            // 5️⃣ Send assertion to backend for verification
-            const result = await this.post(`${this.finishRegisterApi}`).data(data);
-
-            return result;
-
-        } catch (err) {
-            console.error("[AuthVerify loginPasskey]", err);
-            return { error: true, message: err.message };
-        }
-    }
 
 }
