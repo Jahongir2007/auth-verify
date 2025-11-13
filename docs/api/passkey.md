@@ -80,15 +80,14 @@ Successful login:
   "user": { "id": "u123", "username": "john_doe" }
 }
 ```
-💻 4. Frontend Integration (Browser)
-
-Include your frontend wrapper (already built as window.AuthVerify):
-
-<script src="auth-verify.js"></script>
+### 💻 4. Frontend Integration (Browser)
+Include your frontend wrapper (already built as `window.AuthVerify`):
+```html
+<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
 <script>
   const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
 </script>
-
+```
 ### ⚡ 5. Frontend Methods
 #### 🧱 `.post(url) / .get(url)`
 Set endpoint for POST/GET requests before calling `.data()`.
