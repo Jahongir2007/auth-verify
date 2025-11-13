@@ -11,7 +11,7 @@
  - [OAuth](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-oauth-manager--auth-verify)
  - [Magic Links](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-magiclink-passwordless-login-v180)
  - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
- - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#sessionmanager)
+ - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-sessionmanager-api-documentation---auth-verify)
  - [Crypto hashing](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-cryptomanager-api-guide)
 ---
 
