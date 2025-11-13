@@ -1,193 +1,115 @@
-## auth-verify client
-### 1️⃣ Introduction
+## 🔑 AuthVerify Client Guide
+This client is designed to **interact with the backend AuthVerify API** for passkeys / WebAuthn credentials.
+It **does not require body-parser or any server-side logic** on the frontend.
 
-**AuthVerify Client** is a lightweight frontend JavaScript library for TOTP / JWT authentication.
-It works with your backend APIs to:
- - Display QR codes for TOTP enrollment
- - Verify user OTP codes
- - Request JWT tokens from backend
- - Send authenticated requests easily
- - **Register a passkey** (create a new credential)
- - **Login with a passkey** (authenticate existing credential)
- - Handle **Base64URL decoding**, **ArrayBuffer conversion**, and **backend communication** automatically
- - Easily integrate with your Node.js backend using `auth-verify`
-Works like jQuery: just include the script in HTML, no module or bundler needed.
-
-## 2️⃣ Installation
+### 📦 Import
 ```html
-<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
+<!-- ✅ Import auth-verify client -->
+  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
 ```
-
-### 3️⃣ Initialization
+### ⚙️ Initialization
 ```js
-const qrImage = document.getElementById('qrImage');
-
 const auth = new AuthVerify({
-  apiBase: 'http://localhost:3000',  // Your backend API base URL
-  qrEl: qrImage                       // Image element to display QR
+  apiBase: "http://localhost:3000",
+  qrEl: document.getElementById("qr") // optional, for QR codes
 });
 ```
 
-### 4️⃣ Generating QR Code
+| Option    | Type               | Default                   | Description                          |
+| --------- | ------------------ | ------------------------- | ------------------------------------ |
+| `apiBase` | `string`           | `'http://localhost:3000'` | Backend API base URL                 |
+| `qrEl`    | `HTMLImageElement` | `null`                    | Optional element to display QR codes |
+
+### 📬 Methods
+#### 1️⃣ `post(url)`
+Sets the POST endpoint for the next request.
 ```js
-auth.get('/api/qr').qr();
+auth.post("/start-passkey");
 ```
- - Fetches QR code from backend
- - Displays it in the `qrEl` image element
-
-### 5️⃣ Sending Data / JWT Requests
+#### 2️⃣ `get(url)`
+Sets the GET endpoint for the next request.
 ```js
-const payload = { name: 'John', age: 23 };
-
-const token = await auth.post('/api/sign-jwt').data(payload);
-console.log('JWT token:', token);
+auth.get("/fetch-qr");
 ```
- - `post(url)` sets endpoint
- - `data(payload)` sends JSON payload
- - If backend returns a token, it is stored in `auth.jwt`
-
-### 6️⃣ Verifying OTP
+#### 3️⃣ `qr()`
+Fetches a QR code from the backend and renders it in `qrEl`.
 ```js
-const result = await auth.post('/api/verify-totp').verify('123456');
-console.log(result); // e.g. { verified: true }
+await auth.get("/fetch-qr").qr();
 ```
- - Wraps the OTP code in `{ code: '...' }`
- - Sends to backend for verification
+##### Behavior:
+ - If `qrEl` exists, its `src` will be set to the QR image returned by the backend.
+ - Logs an error if no QR or fetch fails.
 
-### 7️⃣ Sending Authenticated Requests
+#### 4️⃣ `data(payload)`
+Sends a POST request with JSON payload to the set endpoint.
 ```js
-const profile = await fetch('http://localhost:3000/api/profile', {
-  headers: auth.header()
-}).then(res => res.json());
-
-console.log(profile);
+const response = await auth.post("/verify-otp").data({ code: "123456" });
+console.log(response);
 ```
- - `auth.header()` returns `{ Authorization: "Bearer <jwt>" }`
- - Easy to attach JWT to any request
-
-### Passkey part (new in v1.8.0)
-#### API Methods
-##### `start(route)`
-Sets the backend endpoint to start a **registration or login flow**.
+#### 5️⃣ `header()`
+Returns an authorization header if `jwt` exists.
 ```js
-auth.start('/api/register/start');  // registration start
-auth.start('/api/login/start');     // login start
+const headers = auth.header();
+// { Authorization: 'Bearer <token>' }
 ```
-
-#### `finish(route)`
-Sets the backend endpoint to **finish the flow** (verify credential/assertion).
+#### 6️⃣ `verify(code)`
+Shortcut for sending OTP / code to backend.
 ```js
-auth.finish('/api/register/finish'); // registration finish
-auth.finish('/api/login/finish');    // login finish
+const result = await auth.verify("123456");
 ```
-
-#### `registerPasskey(user)`
-Registers a new passkey for the user.
-##### Parameters:
-| Param | Type   | Description                                                            |
-| ----- | ------ | ---------------------------------------------------------------------- |
-| user  | Object | `{ id: "user1", username: "john_doe" }` — user info to send to backend |
-
-##### Returns:
-`Promise<Object>` — result from backend (`{ success: true/false, message: "..." }`)
-##### Example:
+#### 7️⃣ `base64urlToUint8Array(base64url)`
+Helper to decode Base64URL strings (used for WebAuthn challenges).
 ```js
-auth.start('/api/register/start').finish('/api/register/finish');
+const arr = auth.base64urlToUint8Array("BASE64URL_STRING");
+```
+#### 8️⃣ `issue(publicKey)`
+Creates a WebAuthn credential on the client (passkey).
+```js
+// 1️⃣ Get registration options from backend
+const publicKey = await auth.post("/start-passkey").data({ user: { id: "user123", name: "Alice" } });
 
-const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
+// 2️⃣ Issue credential in browser
+const credentialData = await auth.issue(publicKey);
 
-if(result.success) alert("Passkey registered!");
-else alert("Error: " + result.message);
+// 3️⃣ Send credential back to backend
+const result = await auth.post("/finish-passkey").data(credentialData);
+console.log(result);
 ```
 
-##### What it does internally:
-1. Calls `/start` endpoint → gets assertion options.
-2. Decodes `challenge` and `allowCredentials[].id` from Base64URL → Uint8Array.
-3. Calls `navigator.credentials.get({ publicKey })`.
-4. Converts ArrayBuffers to Base64.
-5. Sends assertion to `/finish` endpoint for verification.
-#### `base64urlToUint8Array(base64url)`
-Helper to convert Base64URL string to `Uint8Array`.
-Used internally in registration & login flow. Devs can use it for custom WebAuthn handling if needed.
-### 8️⃣ Method Summary
-| Method                  | Description                                                                                    |
-| ----------------------- | ---------------------------------------------------------------------------------------------- |
-| `get(url)`              | Set GET endpoint                                                                               |
-| `post(url)`             | Set POST endpoint                                                                              |
-| `qr()`                  | Fetch QR from backend and display                                                              |
-| `data(payload)`         | Send payload to backend; stores JWT if returned                                                |
-| `verify(code)`          | Send OTP code to backend                                                                       |
-| `header()`              | Return JWT auth header object                                                                  |
-| `start(route)`          | Set backend endpoint to **start registration or login**                                        |
-| `finish(route)`         | Set backend endpoint to **finish registration or login**                                       |
-| `registerPasskey(user)` | Full registration flow: fetch challenge, decode, create credential in browser, send to backend |
-| `loginPasskey(user)`    | Full login flow: fetch assertion, decode, get credential from browser, send to backend         |
+| Step | Description                                                                         |
+| ---- | ----------------------------------------------------------------------------------- |
+| 1    | Fetch `publicKey` options from backend                                              |
+| 2    | Decode challenge & user ID, create credential with `navigator.credentials.create()` |
+| 3    | Convert ArrayBuffers to Base64 and return structured object                         |
+| 4    | Send credential to backend via `post()`                                             |
 
-### 9️⃣ Example HTML
-```html
-<img id="qrImage" />
-<div id="response"></div>
-<button id="getQRBtn">Get QR</button>
-<button id="sendBtn">Send Data</button>
-
-<script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
-<script>
-const qrImage = document.getElementById('qrImage');
-const responseDiv = document.getElementById('response');
-
-const auth = new AuthVerify({ apiBase: 'http://localhost:3000', qrEl: qrImage });
-
-document.getElementById('getQRBtn').addEventListener('click', () => auth.get('/api/qr').qr());
-
-document.getElementById('sendBtn').addEventListener('click', async () => {
-  const payload = { name: 'Jahongir' };
-  const result = await auth.post('/api/sign-jwt').data(payload);
-  responseDiv.textContent = JSON.stringify(result, null, 2);
-});
-</script>
+##### Returned object:
+```js
+{
+  id: "...",
+  rawId: "...",
+  type: "public-key",
+  response: {
+    clientDataJSON: "...",
+    attestationObject: "..."
+  }
+}
 ```
 
-### Passkey example
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <title>AuthVerify Demo</title>
-</head>
-<body>
-  <h1>AuthVerify Passkey Demo</h1>
-  <button id="register">Register Passkey</button>
-  <button id="login">Login with Passkey</button>
+### 🧪 Example Full Flow
+```js
+(async () => {
+  const auth = new AuthVerify({ apiBase: "http://localhost:3000", qrEl: document.getElementById("qr") });
 
-  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/authverify.client.js"></script>
-  <script>
-    const auth = new AuthVerify({ apiBase: "http://localhost:3000" });
+  // Display QR from backend
+  await auth.get("/fetch-qr").qr();
 
-    // Registration setup
-    auth.start('/api/register/start').finish('/api/register/finish');
-    document.getElementById('register').addEventListener('click', async () => {
-      const result = await auth.registerPasskey({ id: 'user1', username: 'john_doe' });
-      alert(result.message);
-    });
+  // Create a passkey
+  const publicKey = await auth.post("/start-passkey").data({ user: { id: "user123", name: "Alice" } });
+  const credential = await auth.issue(publicKey);
 
-    // Login setup
-    auth.start('/api/login/start').finish('/api/login/finish');
-    document.getElementById('login').addEventListener('click', async () => {
-      const result = await auth.loginPasskey({ id: 'user1', username: 'john_doe' });
-      alert(result.message);
-    });
-  </script>
-</body>
-</html>
+  // Send back to backend
+  const result = await auth.post("/finish-passkey").data(credential);
+  console.log(result);
+})();
 ```
-✅ Fully functional frontend passkey demo
-✅ One line registration / login for devs
-✅ Automatic Base64URL decoding and ArrayBuffer handling
-
-### 10️⃣ Tips for Developers
- - Always call `auth.get('/api/qr').qr()` **after page loads**
- - Use `auth.header()` for any authenticated request
- - Backend must provide endpoints for `/api/qr`, `/api/verify-totp`, `/api/sign-jwt`
- - Make sure backend endpoints return **raw WebAuthn options** (`challenge`, `user`, `allowCredentials`) in **Base64URL format**.
- - `user.id` and `challenge` must be **Base64URL encoded** on backend.
- - JWT storage is automatic if backend returns **token**.
