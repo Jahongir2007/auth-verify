@@ -14,7 +14,7 @@
     "uuid": "^9.0.1"
   },
   "name": "auth-verify",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "A simple Node.js library for sending and verifying OTP via email, SMS and Telegram bot. And generating TOTP codes and QR codes. And handling JWT with Cookies. And also handling passwordless logins with passkeys/webauth. And handling magiclink passwordless logins",
   "main": "index.js",
   "scripts": {
