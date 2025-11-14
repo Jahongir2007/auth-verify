@@ -4,6 +4,8 @@ const SessionManager = require("./src/session");
 const OAuthManager = require("./src/oauth");
 const TOTPManager = require("./src/totp");
 const PasskeyManager = require("./src/passkey");
+const MagicLinkManager = require("./src/magiclink");
+const CryptoManager = require("./src/crypto");
 
 class AuthVerify {
   constructor(options = {}) {
@@ -22,7 +24,13 @@ class AuthVerify {
       },
       rpName = "auth-verify",
       saveBy = "id",
-      passExp = "2m"
+      passExp = "2m",
+      mlSecret = "ml_secret",
+      mlExpiry = "5m",
+      appUrl = "https://yourapp.com",
+      hashAlg = "pbkdf2",
+      iterations = 100000,
+      keyLen = 64
     } = options;
 
     // ✅ Ensure cookieName and secret always exist
@@ -50,6 +58,8 @@ class AuthVerify {
     this.senders = new Map();
 
     this.passkey = new PasskeyManager({rpName, storeTokens, saveBy, passExp});
+    this.magic = new MagicLinkManager({mlSecret, mlExpiry, appUrl, storeTokens});
+    this.crypto = new CryptoManager({hashAlg, iterations, keyLen});
   }
 
   // --- Session helpers ---
