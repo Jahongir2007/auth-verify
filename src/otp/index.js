@@ -12,7 +12,7 @@ class OTPManager {
         }else{
             this.otpExpiry = (otpOptions.otpExpiry || 300) * 1000;
         }
-        this.storeType = otpOptions.storeTokens || 'none';
+        this.storeType = otpOptions.storeTokens || 'memory';
         this.hashAlgorithm = otpOptions.otpHash || 'sha256';
         this.logger = null;
         this.customSender = null;
@@ -27,201 +27,31 @@ class OTPManager {
             }
         }
 
+        if(otpOptions.sender){
+            this.senderVia = otpOptions.sender.via;
+            this.senderService = otpOptions.sender.service;
+            this.senderMail = otpOptions.sender.sender;
+            this.senderPass = otpOptions.sender.pass;
+            this.senderHost = otpOptions.sender.host;
+            this.senderPort = otpOptions.sender.port;
+            this.senderSecure = otpOptions.sender.secure;
+        }
+
     }
 
-    // generate(length = 6, callback) {
-    //     try {
-    //         const code = generateSecureOTP(length, this.hashAlgorithm);
-    //         this.code = code;
-
-    //         if (callback && typeof callback === 'function') {
-    //             callback(null, code);
-    //         }
-
-    //         return this; // always return instance for chaining
-    //     } catch (err) {
-    //         if (callback && typeof callback === 'function') callback(err);
-    //         else throw err;
-    //     }
-    // }
-
     setSender(config){
-        if(!config.via) throw new Error("⚠️ Sender type { via } is required. It shouldbe 'email' or 'sms' or 'telegram'");
+        if(!config.via) throw new Error("⚠️ Sender type { via } is required. It should be 'email' or 'sms' or 'telegram'");
         this.senderConfig = config;
     }
 
-    async set(receiverEmailorPhone, callback){
-        const expiryInSeconds = Math.floor(this.otpExpiry / 1000);
-
-        if(callback && typeof callback == 'function'){
-            if(this.storeType == 'memory'){
-                this.tokenStore.set(receiverEmailorPhone, {
-                    code: this.code,
-                    createdAt: Date.now(),
-                    expiresAt: Date.now() + this.otpExpiry,
-                    attempts: 0,
-                    cooldownUntil: 0
-                });
-
-                callback(null)
-            }else if(this.storeType == 'redis'){
-                callback(new Error('⚠️ Redis requires async/await. Use Promise style.'));
-            }else{
-                callback(new Error("❌ {storeTokens} should be 'memory' or 'redis' or 'none'"));
-            }
-            return;
-        }
-
-        try {
-            if(this.storeType == 'memory'){
-                this.tokenStore.set(receiverEmailorPhone, {
-                    code: this.code,
-                    createdAt: Date.now(),
-                    expiresAt: Date.now() + this.otpExpiry,
-                    attempts: 0,
-                    cooldownUntil: 0
-                });
-
-                return this;
-            }else if(this.storeType == 'redis'){
-                await this.redis.set(receiverEmailorPhone, JSON.stringify({
-                    code,
-                    createdAt: Date.now(),
-                    expiresAt: Date.now() + this.otpExpiry,
-                    attempts: 0
-                }), "EX", expiryInSeconds);
-
-                return this;
-            }else{
-                throw new Error("❌ {storeTokens} should be 'memory' or 'redis'");
-            }
-        }catch(err){
-            throw new Error(err);
-        }
+    sender(config){
+        if(!config.via) throw new Error("⚠️ Sender type { via } is required. It should be 'email' or 'sms' or 'telegram'");
+        this.senderConfig = config;
     }
-
-    // async message(options, callback) {
-    //     try {
-    //         const { to, subject, text, html } = options;
-    //         let transporter;
-
-    //         if (this.senderConfig.via === "email") {
-    //             if (this.senderConfig.service === "gmail") {
-    //                 transporter = nodemailer.createTransport({
-    //                     service: 'gmail',
-    //                     auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
-    //                 });
-    //             } else if (this.senderConfig.service === "smtp") {
-    //                 transporter = nodemailer.createTransport({
-    //                     host: this.senderConfig.host,
-    //                     port: this.senderConfig.port,
-    //                     secure: this.senderConfig.secure,
-    //                     auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
-    //                 });
-    //             } else {
-    //                 throw new Error(`❌ Unsupported email service: ${this.senderConfig.service}`);
-    //             }
-
-    //             const info = await transporter.sendMail({ from: this.senderConfig.sender, to, subject, text, html });
-
-    //             if (callback && typeof callback === "function") return callback(null, info);
-    //             return info;
-    //         }
-
-    //         throw new Error(`❌ Unsupported via type: ${via}`);
-    //     } catch (err) {
-    //         if (callback && typeof callback === "function") return callback(err);
-    //         throw err;
-    //     }
-    // }
 
     maxAttempt(limit) {
         this.maxAttempts = limit;
     }
-
-    // async verify({check, code}, callback){
-    //     if(callback && typeof callback == 'function'){
-    //         if(this.storeType == 'memory'){
-    //             const data = this.tokenStore.get(check);
-    //             if(!data) callback(new Error("⚠️ OTP not found or expired"));
-
-    //             if(Date.now() > data.expiresAt){
-    //                 this.tokenStore.delete(check);
-    //                 callback(new Error("⚠️ OTP expired"));
-    //             }
-
-    //             if(this.maxAttempt <= data.attempts){
-    //                 callback(new Error("⚠️ Max attempts reached"));
-    //             }
-
-    //             if(data.code != code){
-    //                 data.attempts+=1;
-    //                 this.tokenStore.set(check, data);
-    //                 callback(new Error("⚠️ Invalid OTP"));
-    //             }
-
-    //             this.tokenStore.delete(check);
-    //             return true;
-    //         }else if(this.storeType == 'redis'){
-    //             callback(new Error('⚠️ Redis requires async/await. Use Promise style.'));
-    //         }else{
-    //             callback(new Error("❌ {storeTokens} should be 'memory' or 'redis'"));
-    //         }
-    //     }
-
-    //     try {
-    //         if(this.storeType == 'memory'){
-    //             const data = await this.tokenStore.get(check);
-    //             if(!data) throw new Error("⚠️ OTP not found or expired");
-
-    //             if(Date.now() > data.expiresAt){
-    //                 this.tokenStore.delete(check);
-    //                 console.log("Now:", Date.now(), "ExpiresAt:", data.expiresAt);
-    //                 throw new Error("⚠️ OTP expired");
-    //             }
-
-    //             if(this.maxAttempt <= data.attempts){
-    //                 throw new Error("⚠️ Max attempts reached");
-    //             }
-
-    //             if(data.code != code){
-    //                 data.attempts+=1;
-    //                 this.tokenStore.set(check, data);
-    //                 throw new Error("⚠️ Invalid OTP");
-    //             }
-
-    //             this.tokenStore.delete(check);
-    //             return true
-    //         }else if(this.storeType == 'redis'){
-    //             const rawData = await this.redis.get(check);
-    //             if(!rawData) throw new Error("⚠️ OTP not found or expired");
-
-    //             const data = JSON.parse(rawData);
-
-    //             if (Date.now() > data.expiresAt) {
-    //                 await this.redis.del(check);
-    //                 throw new Error("⚠️ OTP expired");
-    //             }
-
-    //             if (data.attempts >= this.maxAttempts) {
-    //                 throw new Error("⚠️ Max attempts reached");
-    //             }
-
-    //             if (data.code !== code) {
-    //                 data.attempts++;
-    //                 await this.redis.set(check, JSON.stringify(data), 'EX', Math.floor((data.expiresAt - Date.now()) / 1000));
-    //                 throw new Error("⚠️ Invalid OTP");
-    //             }
-
-    //              await this.redis.del(check);
-    //             return true;
-    //         }else{
-    //             throw new Error("❌ {storeTokens} should be 'memory' or 'redis'");
-    //         }
-    //     }catch(err){
-    //         throw new Error(err);
-    //     }
-    // }  
 
     setLogger(logger) {
         if (typeof logger === "function") {
@@ -313,7 +143,7 @@ class OTPManager {
             // if developer provided their own sender function
 
             if (!this.senderConfig)
-            throw new Error("Sender not configured. Use setSender() before message().");
+            throw new Error("Sender not configured. Use setSender() or sender() before message().");
 
             // ---- EMAIL PART ----
             if (this.senderConfig.via === 'email') {
@@ -323,6 +153,9 @@ class OTPManager {
                     transporter = nodemailer.createTransport({
                         service: 'gmail',
                         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
+                        pool: true,
+                        maxConnections: 3,
+                        maxMessages: 50
                     });
                 } else if (this.senderConfig.service === 'smtp') {
                     transporter = nodemailer.createTransport({
@@ -330,6 +163,9 @@ class OTPManager {
                         port: this.senderConfig.port,
                         secure: !!this.senderConfig.secure,
                         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
+                        pool: true,
+                        maxConnections: 3,
+                        maxMessages: 50
                     });
                 } else {
                     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
@@ -374,76 +210,6 @@ class OTPManager {
                 this.recieverConfig = options;
                 return smsResponse;
             }
-
-            // ---- TELEGRAM BOT PART ----
-            // else if(this.senderConfig.via === 'telegram'){
-            //     const token = "#########";
-            //     const bot = new TelegramBot(token, { polling: true });
-            //     bot.onText(/\/start/, (msg) => {
-            //         bot.sendMessage(msg.chat.id, "Please share your phone number:", {
-            //             reply_markup: {
-            //                 keyboard: [
-            //                     [
-            //                         {
-            //                             text: "📞 Share my phone number",
-            //                             request_contact: true, // 🔥 this requests the user's phone
-            //                         },
-            //                     ],
-            //                 ],
-            //                 resize_keyboard: true,
-            //                 one_time_keyboard: true,
-            //             },
-            //         });
-            //     });
-
-            //     bot.on("polling_error", (err) => console.error("Polling error:", err));
-
-            //     bot.on("contact", (msg) => {
-            //         const phoneNumber = msg.contact.phone_number;
-            //         const firstName = msg.contact.first_name;
-            //         const userId = msg.from.id;
-
-            //         console.log("User shared phone:", phoneNumber);
-
-            //         // bot.sendMessage(
-            //         //     msg.chat.id,
-            //         //     `Thanks, ${firstName}! Your phone number is ${phoneNumber}.`
-            //         // );
-
-            //         // Here you can verify or store it in your database
-            //         if(callback && typeof callback == 'function'){
-            //             if(this.storeType == 'memory'){
-            //                 const data = this.tokenStore.get(phoneNumber);
-            //                 if(!data) callback(new Error('No OTP found for this phone number'));
-
-            //                 bot.sendMessage(msg.chat.id, `Your Verification code is <b>${this.code}</b>`, {parse_mode: "HTML"});
-            //                 callback(null);
-            //             }else if(this.storeType == 'redis'){
-            //                 callback(new Error("Redis require async/await. Use promise style instead of callback"));
-            //             }else{
-            //                 callback(new Error("{storeTokens} should be 'redis' or 'memory'"));
-            //             }
-            //         }else{
-            //             try {
-            //                 if(this.storeType == 'memory'){
-            //                     const data = this.tokenStore.get(phoneNumber);
-            //                     if(!data) throw new Error('No OTP found for this phone number');
-
-            //                     bot.sendMessage(msg.chat.id, `Your Verification code is <b>${data.code}</b>`, {parse_mode: "HTML"});
-            //                     return null;
-            //                 }else if(this.storeType == 'redis'){
-            //                     const raw = await this.redis.get(phoneNumber);
-            //                     if(!raw) throw new Error('No OTP found for this phone number');
-
-            //                     const data = JSON.parse(raw);
-            //                     bot.sendMessage(msg.chat.id, `Your Verification code is <b>${data.code}</b>`, {parse_mode: "HTML"});
-            //                 }
-            //             }catch(err){
-            //                 throw new Error(err);
-            //             }
-            //         }
-            //     });
-            // }
             else if (this.senderConfig.via === 'telegram') {
                 const token = this.senderConfig.token; // replace with your actual bot token
                 const bot = new TelegramBot(token, { polling: true });
@@ -507,7 +273,24 @@ class OTPManager {
                             bot.sendMessage(chatId, "Something went wrong. Please try again.");
                         }
                     });
-                }
+                    // --- WHATSAPP PART ---
+            }else if(this.senderConfig.via === 'whatsapp'){
+                const res = await fetch(`https://graph.facebook.com/v17.0/${this.senderConfig.phoneId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.senderConfig.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messaging_product: 'whatsapp',
+                        to,
+                        type: 'text',
+                        text: { body: text || `Your verification code is ${this.code}` }
+                    })
+                });
+
+                return res.ok;
+            }
                 // ---- UNKNOWN METHOD ----
             else {
                 throw new Error(`Unsupported sending method: ${this.senderConfig.via}`);
@@ -519,75 +302,94 @@ class OTPManager {
         }
     }
 
-    async verify({ check: identifier, code }, callback) {
-        // callback style
-        if (typeof callback === 'function') {
-            try {
-                const res = await this._verifyInternal(identifier, code);
-                return callback(null, res);
-            } catch (err) {
-                return callback(err);
-            }
+    // async verify({ check: identifier, code }, callback) {
+    //     // callback style
+    //     if (typeof callback === 'function') {
+    //         try {
+    //             const res = await this._verifyInternal(identifier, code);
+    //             return callback(null, res);
+    //         } catch (err) {
+    //             return callback(err);
+    //         }
+    //     }
+
+    //     // promise style
+    //     return this._verifyInternal(identifier, code);
+    // }
+
+    async verify(options, code, callback) {
+
+        const handleError = (err) => {
+            if (err.message?.includes("expired")) return new Error("OTP expired");
+            if (err.message?.includes("Invalid")) return new Error("Invalid OTP");
+            return err;
+        };
+
+        // shape normalize
+        if (typeof options === "string" && typeof code === "string") {
+            // options as check string
+            options = { check: options, code: code };
+            code = undefined; // remove
         }
 
-        // promise style
-        return this._verifyInternal(identifier, code);
+        // callback detect
+        if (typeof code === "function") {
+            callback = code;
+        }
+
+        try {
+            const res = await this._verifyInternal(options.check, options.code);
+            if (callback) return callback(null, res);
+            return res;
+        } catch (err) {
+            err = handleError(err);
+            if (callback) return callback(err);
+            throw err;
+        }
     }
 
-    // helper used by verify()
     async _verifyInternal(identifier, code) {
-    // memory
-        if (this.storeType === 'memory' || this.storeType === 'none') {
-            const data = this.tokenStore ? this.tokenStore.get(identifier) : null;
-            if (!data) throw new Error("OTP not found or expired");
+        const data = this.storeType === 'memory' || this.storeType === 'none'
+            ? this.tokenStore?.get(identifier)
+            : JSON.parse(await this.redis.get(identifier) || 'null');
 
-            if (Date.now() > data.expiresAt) {
+        if (!data) throw new Error("OTP not found or expired");
+
+        // strict expiry check
+        if (Date.now() >= data.expiresAt) {
+            if (this.storeType === 'memory' || this.storeType === 'none') {
                 this.tokenStore.delete(identifier);
-                throw new Error("OTP expired");
+            } else {
+                await this.redis.del(identifier);
             }
-
-            if ((this.maxAttempts || 5) <= data.attempts) {
-                throw new Error("Max attempts reached");
-            }
-
-            if (String(data.code) !== String(code)) {
-                data.attempts = (data.attempts || 0) + 1;
-                this.tokenStore.set(identifier, data);
-                throw new Error("Invalid OTP");
-            }
-
-            // success
-            this.tokenStore.delete(identifier);
-            return true;
+            throw new Error("OTP expired");
         }
 
-        // redis
-        if (this.storeType === 'redis') {
-            const raw = await this.redis.get(identifier);
-            if (!raw) throw new Error("OTP not found or expired");
-            const data = JSON.parse(raw);
+        // attempts check
+        if ((this.maxAttempts || 5) <= (data.attempts || 0)) {
+            throw new Error("Max attempts reached");
+        }
 
-            if (Date.now() > data.expiresAt) {
-                await this.redis.del(identifier);
-                throw new Error("OTP expired");
-            }
-
-            if ((this.maxAttempts || 5) <= (data.attempts || 0)) {
-                throw new Error("Max attempts reached");
-            }
-
-            if (String(data.code) !== String(code)) {
-                data.attempts = (data.attempts || 0) + 1;
+        // incorrect code
+        if (String(data.code) !== String(code)) {
+            data.attempts = (data.attempts || 0) + 1;
+            if (this.storeType === 'memory' || this.storeType === 'none') {
+                this.tokenStore.set(identifier, data);
+            } else {
                 const remaining = Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000));
                 await this.redis.set(identifier, JSON.stringify(data), 'EX', remaining);
-                throw new Error("Invalid OTP");
             }
-
-            await this.redis.del(identifier);
-            return true;
+            throw new Error("Invalid OTP");
         }
 
-        throw new Error("{storeTokens} must be 'memory' or 'redis'");
+        // ✅ success
+        if (this.storeType === 'memory' || this.storeType === 'none') {
+            this.tokenStore.delete(identifier);
+        } else {
+            await this.redis.del(identifier);
+        }
+
+        return true;
     }
 
     cooldown(timestamp){
@@ -599,334 +401,10 @@ class OTPManager {
             if(timestamp.endsWith('m')) return timeforCooldown = timeValue * 1000 * 60;
             if(timestamp.endsWith('h')) return timeforCooldown = timeValue * 1000 * 60 * 60;
         }
-
+        if (!timeforCooldown) throw new Error("Invalid cooldown format. Use '30s', '2m', or '1h'.");
         this.cooldownTime = timeforCooldown;
         return this;
     }
-
-    // async resend(identifier, callback){
-    //     if(callback && typeof callback == 'function'){
-    //         if(this.storeType == 'memory'){
-    //             const data = this.tokenStore ? this.tokenStore.get(identifier) : null;
-    //             if(!data){
-    //                 callback(new Error("No OTP generated yet."));
-    //             }
-
-    //             if(Date.now() <= data.cooldownUntil){
-    //                 let waitingTime = (data.cooldownUntil - Date.now())/1000; 
-    //                 callback(new Error(`Cooling down is processing... You should wait ${waitingTime} seconds for sending OTP`));
-    //             }else{
-    //                 const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //                 // let transporter;
-    //                 // if (this.senderConfig.service === 'gmail') {
-    //                 //     transporter = nodemailer.createTransport({
-    //                 //         service: 'gmail',
-    //                 //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                 //     });
-    //                 // } else if (this.senderConfig.service === 'smtp') {
-    //                 //     transporter = nodemailer.createTransport({
-    //                 //         host: this.senderConfig.host,
-    //                 //         port: this.senderConfig.port,
-    //                 //         secure: !!this.senderConfig.secure,
-    //                 //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                 //     });
-    //                 // } else {
-    //                 //     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //                 // }
-    //                 // // prepare mail
-    //                 // const mail = {
-    //                 //     from: this.senderConfig.sender,
-    //                 //     to: this.recieverConfig.to,
-    //                 //     subject: this.recieverConfig.subject || 'Your OTP Code',
-    //                 //     text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //                 //     html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //                 // };
-    //                 // transporter.sendMail(mail, (err, info)=>{
-    //                 //     if(err) return callback(new Error(err));
-    //                 //     callback(null, info);
-    //                 // });
-    //                 resendGeneratedOTP({
-    //                     from: this.senderConfig, 
-    //                     to: this.recieverConfig.to, 
-    //                     pass: this.senderConfig.pass, 
-    //                     host: this.senderConfig.host,
-    //                     port: this.senderConfig.port,
-    //                     code: code,
-    //                     secure: this.senderConfig.secure ,
-    //                     subject: this.recieverConfig.subject,
-    //                     text: this.recieverConfig.text,
-    //                     html: this.recieverConfig.html   
-    //                 }, (err, info)=>{
-    //                     if(err) return callback(new Error(err));
-    //                     callback(null, info);
-    //                 });
-    //                 data.cooldownUntil = null;
-    //                 data.code = code;
-    //                 this.tokenStore.set(identifier, data);
-    //             }
-
-    //             if(Date.now() > data.expiresAt){
-    //                const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //             //    let transporter;
-    //             //     if (this.senderConfig.service === 'gmail') {
-    //             //         transporter = nodemailer.createTransport({
-    //             //             service: 'gmail',
-    //             //             auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //             //         });
-    //             //     } else if (this.senderConfig.service === 'smtp') {
-    //             //         transporter = nodemailer.createTransport({
-    //             //             host: this.senderConfig.host,
-    //             //             port: this.senderConfig.port,
-    //             //             secure: !!this.senderConfig.secure,
-    //             //             auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //             //         });
-    //             //     } else {
-    //             //         throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //             //     }
-    //             //     // prepare mail
-    //             //     const mail = {
-    //             //         from: this.senderConfig.sender,
-    //             //         to: this.recieverConfig.to,
-    //             //         subject: this.recieverConfig.subject || 'Your OTP Code',
-    //             //         text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //             //         html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //             //     };
-    //             //     transporter.sendMail(mail, (err, info)=>{
-    //             //         if(err) return callback(new Error(err));
-    //             //         callback(null, info);
-    //             //     });
-    //                 resendGeneratedOTP({
-    //                     from: this.senderConfig, 
-    //                     to: this.recieverConfig.to, 
-    //                     pass: this.senderConfig.pass, 
-    //                     host: this.senderConfig.host,
-    //                     port: this.senderConfig.port,
-    //                     code: code,
-    //                     secure: this.senderConfig.secure ,
-    //                     subject: this.recieverConfig.subject,
-    //                     text: this.recieverConfig.text,
-    //                     html: this.recieverConfig.html   
-    //                 }, (err, info)=>{
-    //                     if(err) return callback(new Error(err));
-    //                     callback(null, info);
-    //                 });
-    //                 data.cooldownUntil = null;
-    //                 data.code = code;
-    //                 this.tokenStore.set(identifier, data);
-    //             }
-
-    //         }else if(this.storeType == 'redis'){
-    //             callback(new Error(`Redis require async/await. Use promise style`));
-    //         }else{
-    //             callback(new Error("{storeTokens} should be 'none', 'memory', or 'redis'"));
-    //         }
-    //     }else{
-    //         try{
-    //             if(this.storeType == 'memory'){
-    //                 const data = this.tokenStore ? this.tokenStore.get(identifier) : null;
-    //                 if(!data){
-    //                     callback(new Error("No OTP generated yet."));
-    //                 }
-
-    //                 if(Date.now() <= data.cooldownUntil){
-    //                     let waitingTime = (data.cooldownUntil - Date.now())/1000; 
-    //                     callback(new Error(`Cooling down is processing... You should wait ${waitingTime} seconds for sending OTP`));
-    //                 }else{
-    //                     const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //                     // let transporter;
-    //                     // if (this.senderConfig.service === 'gmail') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         service: 'gmail',
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else if (this.senderConfig.service === 'smtp') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         host: this.senderConfig.host,
-    //                     //         port: this.senderConfig.port,
-    //                     //         secure: !!this.senderConfig.secure,
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else {
-    //                     //     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //                     // }
-    //                     // // prepare mail
-    //                     // const mail = {
-    //                     //     from: this.senderConfig.sender,
-    //                     //     to: this.recieverConfig.to,
-    //                     //     subject: this.recieverConfig.subject || 'Your OTP Code',
-    //                     //     text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //                     //     html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //                     // };
-    //                     // await transporter.sendMail(mail);
-    //                     await resendGeneratedOTP({
-    //                         from: this.senderConfig, 
-    //                         to: this.recieverConfig.to, 
-    //                         pass: this.senderConfig.pass, 
-    //                         host: this.senderConfig.host,
-    //                         port: this.senderConfig.port,
-    //                         code: code,
-    //                         secure: this.senderConfig.secure ,
-    //                         subject: this.recieverConfig.subject,
-    //                         text: this.recieverConfig.text,
-    //                         html: this.recieverConfig.html   
-    //                     });
-    //                     data.cooldownUntil = 0;
-    //                     data.code = code;
-    //                     this.tokenStore.set(identifier, data);
-
-    //                     return null;
-    //                 }
-
-    //                 if(Date.now() > data.expiresAt){
-    //                 const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //                 // let transporter;
-    //                 //     if (this.senderConfig.service === 'gmail') {
-    //                 //         transporter = nodemailer.createTransport({
-    //                 //             service: 'gmail',
-    //                 //             auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                 //         });
-    //                 //     } else if (this.senderConfig.service === 'smtp') {
-    //                 //         transporter = nodemailer.createTransport({
-    //                 //             host: this.senderConfig.host,
-    //                 //             port: this.senderConfig.port,
-    //                 //             secure: !!this.senderConfig.secure,
-    //                 //             auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                 //         });
-    //                 //     } else {
-    //                 //         throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //                 //     }
-    //                 //     // prepare mail
-    //                 //     const mail = {
-    //                 //         from: this.senderConfig.sender,
-    //                 //         to: this.recieverConfig.to,
-    //                 //         subject: this.recieverConfig.subject || 'Your OTP Code',
-    //                 //         text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //                 //         html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //                 //     };
-    //                 //     await transporter.sendMail(mail);
-    //                 await resendGeneratedOTP({
-    //                     from: this.senderConfig, 
-    //                     to: this.recieverConfig.to, 
-    //                     pass: this.senderConfig.pass, 
-    //                     host: this.senderConfig.host,
-    //                     port: this.senderConfig.port,
-    //                     code: code,
-    //                     secure: this.senderConfig.secure ,
-    //                     subject: this.recieverConfig.subject,
-    //                     text: this.recieverConfig.text,
-    //                     html: this.recieverConfig.html   
-    //                 });
-    //                 data.cooldownUntil = 0;
-    //                 data.code = code;
-    //                 this.tokenStore.set(identifier, data);
-
-    //                 return null;
-    //                 }
-    //             }else if(this.storeType == 'redis'){
-    //                 const raw = await this.redis.get(identifier);
-    //                 if(!raw){
-    //                     throw new Error("No OTP generated yet.");
-    //                 }
-
-    //                 const data = JSON.parse(raw);
-
-    //                 if(Date.now() <= data.cooldownUntil){
-    //                     let waitingTime = (data.cooldownUntil - Date.now())/1000;
-    //                     throw new Error(`Cooling down is processing... You should wait ${waitingTime} seconds for sending OTP`);
-    //                 }else{
-    //                     const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //                     // let transporter;
-    //                     // if (this.senderConfig.service === 'gmail') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         service: 'gmail',
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else if (this.senderConfig.service === 'smtp') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         host: this.senderConfig.host,
-    //                     //         port: this.senderConfig.port,
-    //                     //         secure: !!this.senderConfig.secure,
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else {
-    //                     //     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //                     // }
-    //                     // // prepare mail
-    //                     // const mail = {
-    //                     //     from: this.senderConfig.sender,
-    //                     //     to: this.recieverConfig.to,
-    //                     //     subject: this.recieverConfig.subject || 'Your OTP Code',
-    //                     //     text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //                     //     html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //                     // };
-    //                     // await transporter.sendMail(mail);
-    //                     await resendGeneratedOTP({
-    //                         from: this.senderConfig, 
-    //                         to: this.recieverConfig.to, 
-    //                         pass: this.senderConfig.pass, 
-    //                         host: this.senderConfig.host,
-    //                         port: this.senderConfig.port,
-    //                         code: code,
-    //                         secure: this.senderConfig.secure ,
-    //                         subject: this.recieverConfig.subject,
-    //                         text: this.recieverConfig.text,
-    //                         html: this.recieverConfig.html   
-    //                     });
-    //                     data.cooldownUntil = 0;
-    //                     data.code = code;
-    //                     await this.redis.set(identifier, JSON.stringify(data));
-    //                 }
-
-    //                 if(Date.now() > data.expiresAt){
-    //                     const code = generateSecureOTP(data.code.length, this.hashAlgorithm);
-    //                     // let transporter;
-    //                     // if (this.senderConfig.service === 'gmail') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         service: 'gmail',
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else if (this.senderConfig.service === 'smtp') {
-    //                     //     transporter = nodemailer.createTransport({
-    //                     //         host: this.senderConfig.host,
-    //                     //         port: this.senderConfig.port,
-    //                     //         secure: !!this.senderConfig.secure,
-    //                     //         auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
-    //                     //     });
-    //                     // } else {
-    //                     //     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
-    //                     // }
-    //                     // // prepare mail
-    //                     // const mail = {
-    //                     //     from: this.senderConfig.sender,
-    //                     //     to: this.recieverConfig.to,
-    //                     //     subject: this.recieverConfig.subject || 'Your OTP Code',
-    //                     //     text: this.recieverConfig.text || `Your OTP is ${code}`,
-    //                     //     html: this.recieverConfig.html || `<p>Your OTP is <b>${code}</b></p>`
-    //                     // };
-    //                     // await transporter.sendMail(mail);
-    //                     await resendGeneratedOTP({
-    //                         from: this.senderConfig, 
-    //                         to: this.recieverConfig.to, 
-    //                         pass: this.senderConfig.pass, 
-    //                         host: this.senderConfig.host,
-    //                         port: this.senderConfig.port,
-    //                         code: code,
-    //                         secure: this.senderConfig.secure ,
-    //                         subject: this.recieverConfig.subject,
-    //                         text: this.recieverConfig.text,
-    //                         html: this.recieverConfig.html   
-    //                     });
-    //                     data.cooldownUntil = 0;
-    //                     data.code = code;
-    //                     await this.redis.set(identifier, JSON.stringify(data));
-    //                 }
-    //             }
-    //         }catch(err){
-    //             throw new Error(err);
-    //         }
-    //     }
-    
-    // }
 
         async resend(identifier, callback) {
             const handleError = (err) => {
@@ -967,7 +445,7 @@ class OTPManager {
                 }
 
                 // Update cooldown
-                data.cooldownUntil = now + (this.cooldown || 30000); // default 30s
+                data.cooldownUntil = now + (this.cooldownTime || 30000); // default 30s
 
                 // Save updated data
                 if (this.storeType === 'memory') {
@@ -1046,7 +524,67 @@ class OTPManager {
         console.log("🚀 Telegram verification bot ready!");
     }
 
+    async send(reciever, mailOption , callback){
 
+        if(typeof mailOption == 'function'){
+            callback = mailOption;
+            mailOption = {}
+        }else if(!mailOption){
+            mailOption = {};
+        }
+
+        const sendProcess = async () => {
+            // const otpCode = this.generate(mailOption.otpLen = 6).set(reciever);
+            // console.log(otpCode);
+            if(this.senderConfig.via === 'email'){
+                await this.#sendEmail(reciever, mailOption);
+            }else if(this.senderConfig.via === 'sms'){
+                await this.#sendSMS(reciever, mailOption);
+            }else if(this.senderConfig.via === 'whatsapp'){
+                await this.#sendWhatsApp(reciever, mailOption);
+            }else {
+                throw new Error("senderConfig.via should be 'email' or 'sms'")
+            }
+        }
+
+        if(callback) sendProcess().then(result => callback(null, result)).catch(error => callback(error));
+        else return sendProcess();
+    }
+
+    #sendEmail(reciever, mailOption){
+        return this.generate(mailOption.otpLen).set(reciever, (err)=>{
+            if(err) throw err
+
+            this.message({
+                to: reciever,
+                subject: mailOption.subject || "Your OTP code",
+                text: mailOption.text || `Your OTP code is ${this.code}`,
+                html: mailOption.html || `Your OTP code is ${this.code}`
+            });
+        });
+    }
+
+    #sendSMS(reciever, smsOption){
+        return this.generate(smsOption.otpLen).set(reciever, (err)=>{
+            if(err) throw err;
+
+            this.message({
+                to: reciever,
+                text: smsOption.text || `Your OTP code is ${this.code}`
+            });
+        });
+    }
+
+    #sendWhatsApp(reciever, msgOption){
+        return this.generate(msgOption.otpLen).set(reciever, (err)=>{
+            if(err) throw err;
+
+            this.message({
+                to: reciever,
+                text: msgOption.text || `Your OTP code is ${this.code}`
+            });
+        });
+    }
 }
 
 module.exports = OTPManager;
