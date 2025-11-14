@@ -69,46 +69,129 @@
         <div class="relative">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           <pre><code class="language-python">import os
+import os
 import requests
 from dotenv import load_dotenv   # pip install python-dotenv
 
-load_dotenv()                     # reads .env file
+load_dotenv()
+
 BASE_URL = os.getenv("OTP_BASE_URL", "http://localhost:3000/api")
+
+# For Gmail
 GMAIL_USER = os.getenv("GMAIL_USER")
 GMAIL_PASS = os.getenv("GMAIL_APP_PASS")
-TEST_EMAIL = os.getenv("TEST_EMAIL")
 
+# For SMTP
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASS = os.getenv("SMTP_PASS")
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = os.getenv("SMTP_PORT")
+
+# For SMS
+SMS_PROVIDER = os.getenv("SMS_PROVIDER")        # twilio | nexmo | etc
+SMS_KEY = os.getenv("SMS_KEY")
+SMS_SECRET = os.getenv("SMS_SECRET")
+SMS_SENDER = os.getenv("SMS_SENDER")
+
+
+# ---------------------------------------------
+# 🔹 Generate OTP (REST: /auth/otp/generate/:len)
+# ---------------------------------------------
 def generate_otp(length=6):
     r = requests.post(f"{BASE_URL}/auth/otp/generate/{length}")
     r.raise_for_status()
     return r.json()
 
+
+# ---------------------------------------------
+# 🔹 Send OTP via Gmail (REST: /auth/otp/send/gmail/:to)
+# ---------------------------------------------
 def send_otp_gmail(to_email, otp):
     payload = {
         "sender": {
             "email": GMAIL_USER,
             "pass": GMAIL_PASS,
             "subject": "Your OTP Code",
-            "text": f"Your OTP code is: {otp}",
-            "html": f"&lt;b&gt;Your OTP code is: {otp}&lt;/b&gt;"
+            "text": f"Your OTP is {otp}",
+            "html": f"<b>Your OTP is {otp}</b>"
         }
     }
+
     r = requests.post(f"{BASE_URL}/auth/otp/send/gmail/{to_email}", json=payload)
     r.raise_for_status()
     return r.json()
 
+
+# -------------------------------------------------
+# 🔹 Send OTP via SMTP Email (REST: /auth/otp/send/email/:to)
+# -------------------------------------------------
+def send_otp_smtp(to_email, otp):
+    payload = {
+        "sender": {
+            "email": SMTP_USER,
+            "pass": SMTP_PASS,
+            "host": SMTP_HOST,
+            "port": int(SMTP_PORT),
+            "secure": False,
+            "subject": "Your OTP Code",
+            "text": f"Your OTP is {otp}",
+            "html": f"<h2>Your OTP is <b>{otp}</b></h2>"
+        }
+    }
+
+    r = requests.post(f"{BASE_URL}/auth/otp/send/email/{to_email}", json=payload)
+    r.raise_for_status()
+    return r.json()
+
+
+# -------------------------------------------------
+# 🔹 Send OTP via SMS (REST: /auth/otp/send/sms/:to)
+# -------------------------------------------------
+def send_otp_sms(phone, otp):
+    payload = {
+        "sender": {
+            "provider": SMS_PROVIDER,
+            "apiKey": SMS_KEY,
+            "apiSecret": SMS_SECRET,
+            "sender": SMS_SENDER,
+            "text": f"Your OTP is {otp}"
+        }
+    }
+
+    r = requests.post(f"{BASE_URL}/auth/otp/send/sms/{phone}", json=payload)
+    r.raise_for_status()
+    return r.json()
+
+
+# ---------------------------------------------
+# 🔹 Verify OTP (REST: /auth/otp/verify/:to)
+# ---------------------------------------------
 def verify_otp(to, otp):
     r = requests.post(f"{BASE_URL}/auth/otp/verify/{to}", json={"otp": otp})
     r.raise_for_status()
     return r.json()
 
-if __name__ == "__main__":
-    otp_data = generate_otp()
-    code = otp_data.get("code")
-    print("OTP:", code)
 
-    send_otp_gmail(TEST_EMAIL, code)
-    # verify_otp(TEST_EMAIL, code)
+# ---------------------------------------------
+# ▶️ MAIN TEST
+# ---------------------------------------------
+if __name__ == "__main__":
+    # Generate OTP
+    data = generate_otp()
+    otp = data.get("code")
+    print("Generated OTP:", otp)
+
+    # Send Gmail
+    # send_otp_gmail("test@gmail.com", otp)
+
+    # Send SMTP
+    # send_otp_smtp("test@gmail.com", otp)
+
+    # Send SMS
+    # send_otp_sms("+998901234567", otp)
+
+    # Verify OTP
+    # print(verify_otp("test@gmail.com", otp))
 </code></pre>
         </div>
       </div>
