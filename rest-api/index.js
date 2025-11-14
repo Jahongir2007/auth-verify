@@ -15,6 +15,26 @@ app.get("/", (req, res) => {
     res.json({ message: "AuthVerify REST API running" });
 });
 
+// Generating OTP (just generate code, no sending)
+router.post('/auth/otp/generate/:leng', async (req, res) => {
+    try {
+        let { leng } = req.params;
+        const length = leng ? parseInt(leng) : 6;  // default 6 digits if undefined
+
+        const otp = auth.otp.generate(length);
+
+        return res.json({
+            ok: true,
+            code: otp.code,
+            length
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ ok: false, error: "Failed to generate OTP", message: err.message });
+    }
+});
+
+
 // ----------- Gmail Provider -------------
 router.post('/auth/otp/send/gmail/:to', async (req, res) => {
     try {
@@ -41,8 +61,7 @@ router.post('/auth/otp/send/gmail/:to', async (req, res) => {
         return res.json({
             ok: true,
             provider: "gmail",
-            to,
-            messageId: info.messageId || null
+            to
         });
 
     } catch (err) {
@@ -79,8 +98,7 @@ router.post('/auth/otp/send/email/:to', async (req, res) => {
         return res.json({
             ok: true,
             provider: "smtp",
-            to,
-            messageId: info.messageId || null
+            to
         });
 
     } catch (err) {
