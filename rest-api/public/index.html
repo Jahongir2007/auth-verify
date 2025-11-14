@@ -75,7 +75,7 @@ from dotenv import load_dotenv   # pip install python-dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("OTP_BASE_URL", "http://localhost:3000/api")
+BASE_URL = os.getenv("OTP_BASE_URL", "https://auth-verify-sy2y.onrender.com/api")
 
 # For Gmail
 GMAIL_USER = os.getenv("GMAIL_USER")
@@ -206,7 +206,7 @@ putenv('GMAIL_USER=jahongir.nodirovich.2007@gmail.com');
 putenv('GMAIL_APP_PASS=YOUR_APP_PASSWORD');
 putenv('TEST_EMAIL=jahongir.sobirov.2007@mail.ru');
 
-$BASE_URL = getenv('OTP_BASE_URL') ?: 'http://localhost:3000/api';
+$BASE_URL = getenv('OTP_BASE_URL') ?: 'https://auth-verify-sy2y.onrender.com/api';
 
 function post($url, $data = null) {
     $ch = curl_init($url);
@@ -253,7 +253,7 @@ import (
 )
 
 var baseURL = os.Getenv("OTP_BASE_URL")
-if baseURL == "" { baseURL = "http://localhost:3000/api" }
+if baseURL == "" { baseURL = "https://auth-verify-sy2y.onrender.com/api" }
 
 func postJSON(url string, payload interface{}) map[string]interface{} {
 	b, _ := json.Marshal(payload)
@@ -298,7 +298,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class OTPDemo {
     private static final String BASE = System.getenv("OTP_BASE_URL") != null ?
-            System.getenv("OTP_BASE_URL") : "http://localhost:3000/api";
+            System.getenv("OTP_BASE_URL") : "https://auth-verify-sy2y.onrender.com/api";
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -349,7 +349,7 @@ using System.Collections.Generic;
 
 class Program {
     static readonly HttpClient client = new HttpClient();
-    static readonly string baseUrl = Environment.GetEnvironmentVariable("OTP_BASE_URL") ?? "http://localhost:3000/api";
+    static readonly string baseUrl = Environment.GetEnvironmentVariable("OTP_BASE_URL") ?? "https://auth-verify-sy2y.onrender.com/api";
 
     static async Task Main() {
         // 1. Generate
@@ -385,7 +385,7 @@ class Program {
 require 'json'
 require 'uri'
 
-BASE   = ENV['OTP_BASE_URL'] || 'http://localhost:3000/api'
+BASE   = ENV['OTP_BASE_URL'] || 'https://auth-verify-sy2y.onrender.com/api'
 GMAIL  = ENV['GMAIL_USER']
 PASS   = ENV['GMAIL_APP_PASS']
 EMAIL  = ENV['TEST_EMAIL']
