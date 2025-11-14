@@ -175,9 +175,8 @@ class OAuthManager {
             },
         };
     }
-}
 
-// --- LINKEDIN LOGIN ---
+    // --- LINKEDIN LOGIN ---
     linkedin({ clientId, clientSecret, redirectUri }) {
         return {
             // Step 1: Redirect user to LinkedIn's authorization page
@@ -235,5 +234,389 @@ class OAuthManager {
             },
         };
     }
+
+      // --- APPLE LOGIN ---
+    apple({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://appleid.apple.com/auth/authorize?" +
+                    new URLSearchParams({
+                        response_type: "code",
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                        scope: "name email",
+                        response_mode: "form_post",
+                    });
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                const tokenRes = await fetch("https://appleid.apple.com/auth/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                if (tokenData.error) throw new Error("OAuth Error: " + tokenData.error);
+                return tokenData;
+            },
+        };
+    }
+
+    // --- DISCORD LOGIN ---
+    discord({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://discord.com/api/oauth2/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                        response_type: "code",
+                        scope: "identify email",
+                    });
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                const tokenRes = await fetch("https://discord.com/api/oauth2/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        code,
+                        grant_type: "authorization_code",
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                if (tokenData.error) throw new Error("OAuth Error: " + tokenData.error);
+                const userRes = await fetch("https://discord.com/api/users/@me", {
+                    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+                });
+                const user = await userRes.json();
+                return { ...user, access_token: tokenData.access_token };
+            },
+        };
+    }
+
+    // --- SLACK LOGIN ---
+    slack({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://slack.com/oauth/v2/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                        scope: "identity.basic identity.email",
+                    });
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                const tokenRes = await fetch("https://slack.com/api/oauth.v2.access?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        code,
+                        redirect_uri: redirectUri,
+                    }));
+                const tokenData = await tokenRes.json();
+                if (!tokenData.ok) throw new Error("OAuth Error: " + tokenData.error);
+                return { ...tokenData, access_token: tokenData.access_token };
+            },
+        };
+    }
+
+    // --- MICROSOFT LOGIN ---
+    microsoft({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                        response_type: "code",
+                        scope: "User.Read",
+                    });
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                const tokenRes = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        code,
+                        redirect_uri: redirectUri,
+                        grant_type: "authorization_code",
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                if (tokenData.error) throw new Error("OAuth Error: " + tokenData.error);
+                return tokenData;
+            },
+        };
+    }
+
+    // --- TELEGRAM LOGIN ---
+    telegram({ botId, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://t.me/" + botId + "?start=auth&redirect_uri=" + encodeURIComponent(redirectUri);
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                // Telegram uses bot login; typically handled via deep links
+                return { code, message: "Telegram login uses deep link auth" };
+            },
+        };
+    }
+
+    // --- WHATSAPP LOGIN ---
+    whatsapp({ phoneNumberId, redirectUri }) {
+        return {
+            redirect: (res) => {
+                const url =
+                    "https://api.whatsapp.com/send?" +
+                    new URLSearchParams({
+                        phone: phoneNumberId,
+                        text: "Please authorize: " + redirectUri,
+                    });
+                res.redirect(url);
+            },
+            callback: async (code) => {
+                // WhatsApp login usually handled via QR / deep link
+                return { code, message: "WhatsApp login uses QR/deep link auth" };
+            },
+        };
+    }
+
+        // --- REDDIT LOGIN ---
+    reddit({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://www.reddit.com/api/v1/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        response_type: "code",
+                        state: "random_state",
+                        redirect_uri: redirectUri,
+                        duration: "temporary",
+                        scope: "identity",
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch("https://www.reddit.com/api/v1/access_token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+                    },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                const userRes = await fetch("https://oauth.reddit.com/api/v1/me", {
+                    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+                });
+                const user = await userRes.json();
+                return { ...user, access_token: tokenData.access_token };
+            },
+        };
+    }
+
+    // --- YANDEX LOGIN ---
+    yandex({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://oauth.yandex.com/authorize?" +
+                    new URLSearchParams({
+                        response_type: "code",
+                        client_id: clientId,
+                        redirect_uri: redirectUri,
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch("https://oauth.yandex.com/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                const userRes = await fetch("https://login.yandex.ru/info", {
+                    headers: { Authorization: `OAuth ${tokenData.access_token}` },
+                });
+                const user = await userRes.json();
+                return { ...user, access_token: tokenData.access_token };
+            },
+        };
+    }
+
+    // --- TUMBLR LOGIN ---
+    tumbler({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://www.tumblr.com/oauth2/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        response_type: "code",
+                        redirect_uri: redirectUri,
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch("https://api.tumblr.com/v2/oauth2/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        redirect_uri: redirectUri,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                return tokenData;
+            },
+        };
+    }
+
+    // --- MAIL.RU LOGIN ---
+    mailru({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://oauth.mail.ru/login?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        response_type: "code",
+                        redirect_uri: redirectUri,
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch("https://oauth.mail.ru/token", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                const userRes = await fetch("https://oauth.mail.ru/userinfo", {
+                    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+                });
+                const user = await userRes.json();
+                return { ...user, access_token: tokenData.access_token };
+            },
+        };
+    }
+
+    // --- VK LOGIN ---
+    vk({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://oauth.vk.com/authorize?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        display: "page",
+                        redirect_uri: redirectUri,
+                        response_type: "code",
+                        scope: "email",
+                        v: "5.131",
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch(
+                    "https://oauth.vk.com/access_token?" +
+                        new URLSearchParams({
+                            client_id: clientId,
+                            client_secret: clientSecret,
+                            redirect_uri: redirectUri,
+                            code,
+                        })
+                );
+                const tokenData = await tokenRes.json();
+                return tokenData;
+            },
+        };
+    }
+
+    // --- YAHOO LOGIN ---
+    yahoo({ clientId, clientSecret, redirectUri }) {
+        return {
+            redirect(res) {
+                const url =
+                    "https://api.login.yahoo.com/oauth2/request_auth?" +
+                    new URLSearchParams({
+                        client_id: clientId,
+                        response_type: "code",
+                        redirect_uri: redirectUri,
+                        scope: "openid email profile",
+                    });
+                res.redirect(url);
+            },
+            async callback(code) {
+                const tokenRes = await fetch("https://api.login.yahoo.com/oauth2/get_token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+                    },
+                    body: new URLSearchParams({
+                        grant_type: "authorization_code",
+                        code,
+                        redirect_uri: redirectUri,
+                    }),
+                });
+                const tokenData = await tokenRes.json();
+                return tokenData;
+            },
+        };
+    }
+
+    // --- CUSTOM PROVIDER ---
+    register(name, fn) {
+        if (!name || typeof fn !== "function") throw new Error("Provider registration requires a name and function");
+        this.providers[name] = fn;
+    }
+
+    use(name, options) {
+        const provider = this.providers[name];
+        if (!provider) throw new Error(`Provider "${name}" not found`);
+        return provider(options);
+    }
+
+}
 
 module.exports = OAuthManager;
