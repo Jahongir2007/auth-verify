@@ -122,7 +122,8 @@ router.post('/auth/otp/send/sms/:to', async (req, res)=>{
             provider,
             apiKey,
             apiSecret,
-            sender
+            sender, 
+            mock: false
         });
 
         const info = await auth.otp.send(to, {text});
