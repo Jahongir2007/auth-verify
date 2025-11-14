@@ -217,6 +217,22 @@ class JWTManager {
         };
     }
 
+    issue(user) {
+        const accessToken = jwt.sign({ id: user.id }, this.secret, { expiresIn: '15m' });
+        const refreshToken = jwt.sign({ id: user.id, type: 'refresh' }, this.secret, { expiresIn: '7d' });
+        return { accessToken, refreshToken };
+    }
+
+    refresh(refreshToken) {
+        try {
+            const payload = jwt.verify(refreshToken, this.secret);
+            if (payload.type !== 'refresh') throw new Error('Invalid token');
+            return this.issue({ id: payload.id });
+        } catch (err) {
+            throw new Error('Token expired or invalid');
+        }
+  }
+
 }
 
 module.exports = JWTManager;
