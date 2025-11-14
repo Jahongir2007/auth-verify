@@ -1,6 +1,6 @@
 # auth-verify
 
-**AuthVerify** is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications.
+**AuthVerify** is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications. Auth-verify now supports **REST API** for generating, sending OTP with email/SMS and verifying it.
  - [Installation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-installation)
  - [Initialization](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-example-initialize-library-commonjs)
  - [JWT](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-jwt-usage)
@@ -13,6 +13,7 @@
  - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
  - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-sessionmanager-api-documentation---auth-verify)
  - [Crypto hashing](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-cryptomanager-api-guide)
+ - [Auth-verify REST API](https://auth-verify-sy2y.onrender.com/)
 ---
 
 ## 🧩 Installation
@@ -34,9 +35,10 @@ npm install auth-verify
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
 - `TOTPManager`: generate, verify uri, codes and QR codes.
 - `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
-- `OAuthManager`: Handle OAuth 2.0 logins for Google, Facebook, GitHub, X, Linkedin, Apple, Discord, Slack, Microsoft, Telegram and WhatsApp.
+- `OAuthManager`: Handle OAuth 2.0 logins for 20+ providers.
 - `PasskeyManager`: Handle passwordless login and registration using WebAuthn/passkey.
 - `MagicLinkManager`: Handle passwordless login with magic link generation and verification.
+- `CrpytoManager`: Handle hashing passwords or another data with algorithms like: `"pbkdf2"` and `"scrypt"`
 ---
 
 ## 🚀 Example: Initialize library (CommonJS)
@@ -316,6 +318,7 @@ const otp = auth.otp; // internally uses OTPManager
 
 ### ⚙️ Sender Configuration
 #### Email sender
+##### Using Gmail
 ```js
 otp.sender({
     via: "email", // or "sms", "telegram", "whatsapp"
@@ -328,6 +331,17 @@ otp.sender({
 });
 
 // or you can use otp.setSender({...});
+```
+##### Using SMTP service
+```js
+otp.sender({
+  via: "email", // or "sms", "telegram", "whatsapp"
+  sender: "your_email@gmail.com",
+  pass: "your_app_password",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false
+})
 ```
 #### SMS sender
 ##### Using infobip:
@@ -412,6 +426,9 @@ await otp.send("user@example.com", {
     text: "Your OTP is 123456",
     html: "<b>123456</b>"
 });
+
+// or simply
+await otp.send("user@example.com");
 ```
 Supports channels:
 | `via`    | Notes                                    |
@@ -432,10 +449,11 @@ otp.send("user@example.com", options, (err, info) => {
 ### 🔑 Verify OTP
 ```js
 // Promise style
-const result = await otp.verify({ check: "user@example.com", code: "123456" });
+const result = await otp.verify("user@example.com", "123456");
+//const result = await otp.verify({ check: "user@example.com", code: "123456" }); or you can use this style
 
 // Callback style
-otp.verify({ check: "user@example.com", code: "123456" }, (err, success) => {
+otp.verify("user@example.com", "123456", (err, success) => {
     if(err) console.error(err.message);
     else console.log("✅ OTP verified");
 });
@@ -1737,16 +1755,9 @@ auth-verify/
 │  ├─ /session/index.js
 |  ├─ /oauth/index.js
 │  └─ helpers/helper.js
-├─ tests/
-│  ├─ jwa.test.js
-│  ├─ cryptomanager.test.js
-│  ├─ jwtmanager.multitab.test.js
-│  ├─ jwtmanager.test.js
-│  ├─ otpmanager.test.js
-│  ├─ oauth.test.js
-│  ├─ totpmanager.test.js
-│  ├─ passkeymanager.test.js
-│  ├─ magiclinkmanager.test.js
+├─ rest-api/
+│  ├─ public/index.html
+│  ├─ index.js
 ├─ babel.config.js
 ├─ auth-verify.client.js
 ```
