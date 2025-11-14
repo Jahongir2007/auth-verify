@@ -1,18 +1,20 @@
 const express = require("express");
 const cors = require("cors");
 const AuthVerify = require("../index");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static("public"));
 
 const router = express.Router();   // FIXED
 
 const auth = new AuthVerify();
 
-// basic route
+// If user enters any route ("/", "/docs", etc) send homepage
 app.get("/", (req, res) => {
-    res.json({ message: "AuthVerify REST API running" });
+  res.sendFile(path.join(__dirname, "public/index.html"));
 });
 
 // Generating OTP (just generate code, no sending)
