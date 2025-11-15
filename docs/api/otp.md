@@ -87,7 +87,7 @@ Auth-Verify supports sending OTPs via SMS using **30+ global SMS providers**.
 ##### 1️⃣ Initialize SMS Sender
 Before sending SMS, you must configure your sender:
 ```js
-auth.sender({
+otp.sender({
   via: "sms",               // REQUIRED — "sms" or "email" or "telegram"
   provider: "twilio",       // REQUIRED — choose provider
   apiKey: process.env.TWILIO_SID,       // varies per provider
@@ -98,7 +98,7 @@ auth.sender({
 ```
 ##### 2️⃣ Send OTP
 ```js
-const smsResponse = await auth.otp.send("+998901234567");
+const smsResponse = await otp.send("+998901234567");
 console.log(smsResponse);
 ```
 ##### ✅ Example Response
@@ -112,7 +112,7 @@ console.log(smsResponse);
 
 ##### 3️⃣ Mock Mode for Testing
 ```js
-auth.sender({
+otp.sender({
   via: "sms",
   provider: "twilio",
   mock: true
@@ -125,7 +125,7 @@ Console output:
 → To: +998901234567
 → Message: Your OTP is 123456
 ```
-##### 5️⃣ Supported SMS Providers & Example Config
+##### 4️⃣ Supported SMS Providers & Example Config
 
 | Provider          | Config Example                                           | Notes                        |
 | ----------------- | -------------------------------------------------------- | ---------------------------- |
@@ -156,6 +156,16 @@ Console output:
 | SMS Gateway Hub   | `apiKey, sender`                                         | India                        |
 | TextMagic         | `apiKey, apiSecret, sender`                              | Global                       |
 > All providers use the same `sendSMS` helper, just change provider and API credentials.
+> How to use this table:
+> ```js
+> // Using eskiz provider (for example)
+> otp.sender({
+>   provider: 'eskiz', // (see Provider column)
+>   email: "YOUR_EMAIL_HERE", // (see Config Example column)
+>   password: "YOUR_PASSWORD_HERE", // (see Config Example column)
+>   sender: "YOUR_SENDER_NAME_HERE" // (see Config Example column)
+> });
+>```
 ##### Error handling
 ```js
 try {
