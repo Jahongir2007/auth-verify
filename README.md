@@ -41,23 +41,21 @@ const auth = new AuthVerify({ storeTokens: "memory" });
 
 // Connecting sender
 auth.otp.sender({
-  via: 'email',
-  service: 'gmail',
-  sender: 'johndoe@example.com',
-  pass: 'YOUR_APP_PASS'
+    via: 'email',
+    sender: 'johndoe@example.com',
+    pass: 'YOUR_APP_PASS'
+    service: 'gmail'
 });
 
-// Send OTP
-auth.otp.send('alice@example.com', (err)=>{
-  if(err) console.log(err);
-  console.log("OTP sent!");
-  // Verify OTP
-  auth.otp.verify('alice@example.com', '123456', (err, valid)=>{
-    if(err) console.log(err);
-    if(valid) console.log('Correct');
-    else console.log('Incorrect');
-  });
-});
+(async () => {
+  let sent = await auth.otp.send('alice@example.com');
+  if(sent) {
+    let valid = await auth.otp.verify('alice@example.com', auth.otp.code);
+    if(valid) console.log('Correct OTP code');
+    else console.log('Incorrect OTP code');   
+  }
+})();
+
 
 ```
 [For all documentation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md) 
