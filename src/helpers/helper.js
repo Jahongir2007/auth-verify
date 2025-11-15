@@ -171,109 +171,360 @@ async function resendGeneratedOTP({from, to, pass, service, host, secure, port, 
     }
 }
 
-async function sendSMS({ provider, apiKey, apiSecret, from, to, text, mock = false }) {
+async function sendSMS({
+  provider,
+  apiKey,
+  apiSecret,
+  from,
+  to,
+  text,
+  mock = false,
+  email,
+  password,
+  token,
+  region,
+  template_id
+}) {
   try {
-    // 🧪 For testing only — no real SMS sent
+    // 🧪 Mock mode
     if (mock) {
       console.log(`📱 [Mock SMS via ${provider}]`);
-      console.log(`→ To: ${to}`);
-      console.log(`→ Message: ${text}`);
       return { status: "SENT (mock)", to, text };
     }
 
-    // 🔷 Infobip API
-    if (provider === 'infobip') {
+    //
+    // ─────────────────────────────────────────
+    //  Already existing providers (Your ones)
+    // ─────────────────────────────────────────
+    //
+
+    // 🔷 Infobip
+    if (provider === "infobip") {
       await axios.post(
-        'https://api.infobip.com/sms/2/text/advanced',
-        {
-          messages: [{ from, destinations: [{ to }], text }],
-        },
-        {
-          headers: {
-            Authorization: `App ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        "https://api.infobip.com/sms/2/text/advanced",
+        { messages: [{ from, destinations: [{ to }], text }] },
+        { headers: { Authorization: `App ${apiKey}` } }
       );
       return { status: "SENT", provider: "Infobip", to };
     }
 
-    // 🟪 Vonage API
-    if (provider === 'vonage') {
+    // 🟪 Vonage
+    if (provider === "vonage") {
       await axios.post(
-        'https://rest.nexmo.com/sms/json',
-        {
-          api_key: apiKey,
-          api_secret: apiSecret,
-          to,
-          from,
-          text,
-        },
-        { headers: { 'Content-Type': 'application/json' } }
+        "https://rest.nexmo.com/sms/json",
+        { api_key: apiKey, api_secret: apiSecret, to, from, text },
+        { headers: { "Content-Type": "application/json" } }
       );
       return { status: "SENT", provider: "Vonage", to };
     }
 
-    // 🟩 Twilio API
-    if (provider === 'twilio') {
+    // 🟩 Twilio
+    if (provider === "twilio") {
       await axios.post(
         `https://api.twilio.com/2010-04-01/Accounts/${apiKey}/Messages.json`,
-        new URLSearchParams({
-          To: to,
-          From: from,
-          Body: text,
-        }),
-        {
-          auth: {
-            username: apiKey,
-            password: apiSecret,
-          },
-        }
+        new URLSearchParams({ To: to, From: from, Body: text }),
+        { auth: { username: apiKey, password: apiSecret } }
       );
       return { status: "SENT", provider: "Twilio", to };
     }
 
-    throw new Error(`Unsupported SMS provider: ${provider}`);
+    // 🇺🇿 Eskiz
+    if (provider === "eskiz") {
+      const login = await axios.post("https://notify.eskiz.uz/api/auth/login", {
+        email,
+        password
+      });
+      const authToken = login.data.data.token;
+
+      await axios.post(
+        "https://notify.eskiz.uz/api/message/sms/send",
+        {
+          mobile_phone: to,
+          message: text,
+          from: from || "4546"
+        },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      return { status: "SENT", provider: "Eskiz", to };
+    }
+
+    // 🇺🇿 PlayMobile
+    if (provider === "playmobile") {
+      await axios.post(
+        "http://send.smsxabar.uz/broker-api/send",
+        {
+          messages: [
+            {
+              recipient: to,
+              "message-id": "auth-verify",
+              sms: {
+                originator: from || "3700",
+                content: { text }
+              }
+            }
+          ]
+        },
+        { auth: { username: apiKey, password: apiSecret } }
+      );
+      return { status: "SENT", provider: "PlayMobile", to };
+    }
+
+    // 🇮🇳 MSG91
+    if (provider === "msg91") {
+      await axios.post(
+        "https://api.msg91.com/api/v5/flow/",
+        {
+          template_id: apiSecret,
+          recipients: [{ mobiles: to }],
+          message: text
+        },
+        { headers: { authkey: apiKey } }
+      );
+      return { status: "SENT", provider: "MSG91", to };
+    }
+
+    // 🌍 Telesign
+    if (provider === "telesign") {
+      await axios.post(
+        "https://rest-api.telesign.com/v1/messaging",
+        { phone_number: to, message: text, message_type: "ARN" },
+        { auth: { username: apiKey, password: apiSecret } }
+      );
+      return { status: "SENT", provider: "Telesign", to };
+    }
+
+    // 🇷🇺 SMS.ru
+    if (provider === "smsru") {
+      await axios.get(
+        `https://sms.ru/sms/send?api_id=${apiKey}&to=${to}&msg=${encodeURIComponent(
+          text
+        )}&json=1`
+      );
+      return { status: "SENT", provider: "SMS.ru", to };
+    }
+
+    // 🇮🇳🇬🇧 TextLocal
+    if (provider === "textlocal") {
+      await axios.post(
+        "https://api.textlocal.in/send/",
+        new URLSearchParams({
+          apiKey,
+          numbers: to,
+          sender: from,
+          message: text
+        })
+      );
+      return { status: "SENT", provider: "TextLocal", to };
+    }
+
+    //
+    // ─────────────────────────────────────────
+    //  NEW PROVIDERS ADDED BELOW
+    // ─────────────────────────────────────────
+    //
+
+    // 🌍 ClickSend
+    if (provider === "clicksend") {
+      await axios.post(
+        "https://rest.clicksend.com/v3/sms/send",
+        {
+          messages: [{ source: "auth-verify", from, body: text, to }]
+        },
+        {
+          auth: { username: apiKey, password: apiSecret }
+        }
+      );
+      return { status: "SENT", provider: "ClickSend", to };
+    }
+
+    // 🌍 Sinch SMS
+    if (provider === "sinch") {
+      await axios.post(
+        `https://sms.api.sinch.com/xms/v1/${apiKey}/batches`,
+        {
+          from,
+          to: [to],
+          body: text
+        },
+        { headers: { Authorization: `Bearer ${apiSecret}` } }
+      );
+      return { status: "SENT", provider: "Sinch", to };
+    }
+
+    // 🌍 Telnyx
+    if (provider === "telnyx") {
+      await axios.post(
+        "https://api.telnyx.com/v2/messages",
+        {
+          from,
+          to,
+          text
+        },
+        {
+          headers: { Authorization: `Bearer ${apiKey}` }
+        }
+      );
+      return { status: "SENT", provider: "Telnyx", to };
+    }
+
+    // 🇹🇷 NetGSM
+    if (provider === "netgsm") {
+      await axios.get(
+        `https://api.netgsm.com.tr/sms/send/get/?usercode=${apiKey}&password=${apiSecret}&gsmno=${to}&message=${encodeURIComponent(
+          text
+        )}&msgheader=${from}`
+      );
+      return { status: "SENT", provider: "NetGSM", to };
+    }
+
+    // 🇮🇷 KaveNegar
+    if (provider === "kavenegar") {
+      await axios.get(
+        `https://api.kavenegar.com/v1/${apiKey}/sms/send.json?receptor=${to}&message=${encodeURIComponent(
+          text
+        )}`
+      );
+      return { status: "SENT", provider: "KaveNegar", to };
+    }
+
+    // 🇸🇦 Unifonic
+    if (provider === "unifonic") {
+      await axios.post(
+        "https://el.cloud.unifonic.com/rest/SMS/messages",
+        {
+          recipient: to,
+          body: text,
+          sender: from
+        },
+        {
+          headers: { Authorization: `Bearer ${apiKey}` }
+        }
+      );
+      return { status: "SENT", provider: "Unifonic", to };
+    }
+
+    // 🇨🇳 Alibaba Cloud SMS
+    if (provider === "alibaba") {
+      await axios.get("https://dysmsapi.aliyuncs.com/", {
+        params: {
+          PhoneNumbers: to,
+          SignName: from,
+          TemplateCode: template_id,
+          TemplateParam: JSON.stringify({ code: text }),
+          RegionId: region || "cn-hangzhou",
+          AccessKeyId: apiKey,
+          Format: "JSON"
+        }
+      });
+      return { status: "SENT", provider: "Alibaba Cloud SMS", to };
+    }
+
+    // 🔥 Firebase (for OTP only)
+    if (provider === "firebase") {
+      return {
+        status: "NOT_SENT",
+        provider: "Firebase",
+        to,
+        note: "Firebase SMS must be sent by client-side SDK"
+      };
+    }
+
+    // 💰 CheapGlobalsms
+    if (provider === "cheapglobalsms") {
+      await axios.get(
+        `https://cheapglobalsms.com/api?username=${apiKey}&password=${apiSecret}&sender=${from}&recipient=${to}&message=${encodeURIComponent(
+          text
+        )}`
+      );
+      return { status: "SENT", provider: "CheapGlobalsms", to };
+    }
+
+    // 🌍 Africa's Talking
+    if (provider === "africastalking") {
+    await axios.post(
+        "https://api.africastalking.com/version1/messaging",
+        {
+        to,
+        message: text,
+        from: from || "AUTHVERIFY"
+        },
+        { headers: { "apiKey": apiKey } }
+    );
+    return { status: "SENT", provider: "Africa's Talking", to };
+    }
+
+    // 🌍 MessageBird
+    if (provider === "messagebird") {
+    await axios.post(
+        "https://rest.messagebird.com/messages",
+        { recipients: [to], originator: from, body: text },
+        { headers: { Authorization: `AccessKey ${apiKey}` } }
+    );
+    return { status: "SENT", provider: "MessageBird", to };
+    }
+
+    // 🌍 SMSAPI (Europe)
+    if (provider === "smsapi") {
+    await axios.post(
+        `https://api.smsapi.com/sms.do`,
+        new URLSearchParams({
+        to,
+        message: text,
+        from,
+        format: "json"
+        }),
+        { headers: { Authorization: `Bearer ${apiKey}` } }
+    );
+    return { status: "SENT", provider: "SMSAPI", to };
+    }
+
+    // 🌍 Clickatell
+    if (provider === "clickatell") {
+        await axios.post(
+            "https://platform.clickatell.com/messages/http/send",
+            { to, content: text, from },
+            { headers: { Authorization: `Bearer ${apiKey}` } }
+        );
+        return { status: "SENT", provider: "Clickatell", to };
+    }
+
+    // 🌍 Plivo
+    if (provider === "plivo") {
+        await axios.post(
+            "https://api.plivo.com/v1/Account/" + apiKey + "/Message/",
+            { src: from, dst: to, text },
+            { auth: { username: apiKey, password: apiSecret } }
+        );
+        return { status: "SENT", provider: "Plivo", to };
+    }
+
+    // 🌍 Vibes (US)
+    if (provider === "vibes") {
+        await axios.post(
+            "https://api.vibes.com/messages",
+            { phone: to, text },
+            { headers: { Authorization: `Bearer ${apiKey}` } }
+        );
+        return { status: "SENT", provider: "Vibes", to };
+    }
+
+    // 🌍 SMS Gateway Hub (India)
+    if (provider === "smsgatewayhub") {
+        await axios.get(
+            `https://www.smsgatewayhub.com/api/mt/SendSMS?APIKey=${apiKey}&senderid=${from}&channel=2&DCS=0&flashsms=0&number=${to}&text=${encodeURIComponent(
+            text
+            )}&route=13`
+        );
+        return { status: "SENT", provider: "SMSGatewayHub", to };
+    }
+
+    throw new Error(`❌ Unsupported SMS provider: ${provider}`);
   } catch (err) {
     console.error("❌ SMS send failed:", err.message);
     throw new Error(err.message);
   }
+
 }
-
-// async function sendOTPwithTelegramBot(otpCode){
-//     bot.onText(/\/start/, (msg) => {
-//           bot.sendMessage(chatId, "Please share your phone number:", {
-//                 reply_markup: {
-//                     keyboard: [
-//                     [
-//                         {
-//                         text: "📞 Share my phone number",
-//                         request_contact: true, // 🔥 this requests the user's phone
-//                         },
-//                     ],
-//                     ],
-//                     resize_keyboard: true,
-//                     one_time_keyboard: true,
-//                 },
-//             });
-//         bot.sendMessage(msg.chat.id, `Your Verification code is <b>${otpCode}</b>`, {parse_mode: "HTML"});
-//     });
-
-//     bot.on("contact", (msg) => {
-//         const phoneNumber = msg.contact.phone_number;
-//         const firstName = msg.contact.first_name;
-//         const userId = msg.from.id;
-
-//         console.log("User shared phone:", phoneNumber);
-
-//         bot.sendMessage(
-//             msg.chat.id,
-//             `Thanks, ${firstName}! Your phone number is ${phoneNumber}.`
-//         );
-
-//         // Here you can verify or store it in your database
-//     });
-// }
 
 module.exports = {
     parseTime,
