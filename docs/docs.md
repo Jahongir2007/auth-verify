@@ -344,6 +344,7 @@ otp.sender({
 })
 ```
 #### SMS sender
+If you want reals sms sending you should add `mock: false`.
 ##### Using infobip:
 ```js
 otp.sender({
