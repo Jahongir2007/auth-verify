@@ -137,7 +137,7 @@ class OTPManager {
     }
 
     async message(options, callback) {
-        const { to, subject, text, html, provider, apiKey, apiSecret } = options;
+        const { to, subject, text, html, provider, apiKey, apiSecret, email, password } = options;
 
         try {
             // if developer provided their own sender function
@@ -198,13 +198,15 @@ class OTPManager {
             else if (this.senderConfig.via === 'sms') {
                 // Simple structure: no callback needed since SMS sending is async
                 const smsResponse = await sendSMS({
-                    provider: provider || this.senderConfig.provider, // allow override
+                    provider: provider || this.senderConfig.provider,
                     apiKey: apiKey || this.senderConfig.apiKey,
                     apiSecret: apiSecret || this.senderConfig.apiSecret,
+                    email: email || this.senderConfig.email,
+                    password: password || this.senderConfig.password,
                     from: this.senderConfig.sender,
                     to,
                     text: text || `Your OTP is ${this.code}`,
-                    mock: this.senderConfig.mock ?? true,
+                    mock: this.senderConfig.mock ?? false
                 });
 
                 this.recieverConfig = options;
@@ -538,10 +540,13 @@ class OTPManager {
             // console.log(otpCode);
             if(this.senderConfig.via === 'email'){
                 await this.#sendEmail(reciever, mailOption);
+                return true;
             }else if(this.senderConfig.via === 'sms'){
                 await this.#sendSMS(reciever, mailOption);
+                return true;
             }else if(this.senderConfig.via === 'whatsapp'){
                 await this.#sendWhatsApp(reciever, mailOption);
+                return true;
             }else {
                 throw new Error("senderConfig.via should be 'email' or 'sms'")
             }
