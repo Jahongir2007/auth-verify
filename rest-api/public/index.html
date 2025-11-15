@@ -142,39 +142,63 @@ if __name__ == "__main__":
         <h3 class="text-2xl font-semibold mb-3">PHP (cURL)</h3>
         <div class="relative">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          <pre><code class="language-php">&lt;?php
-putenv('GMAIL_USER=jahongir.nodirovich.2007@gmail.com');
-putenv('GMAIL_APP_PASS=YOUR_APP_PASSWORD');
-putenv('TEST_EMAIL=jahongir.sobirov.2007@mail.ru');
+          <pre><code class="language-php"><?php
+$baseUrl = getenv('OTP_BASE_URL') ?: 'https://auth-verify-sy2y.onrender.com/api';
+$smsProvider = getenv('SMS_PROVIDER');
+$smsKey = getenv('SMS_KEY');
+$smsSecret = getenv('SMS_SECRET');
+$smsSender = getenv('SMS_SENDER');
 
-$BASE_URL = getenv('OTP_BASE_URL') ?: 'https://auth-verify-sy2y.onrender.com/api';
-
-function post($url, $data = null) {
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => $data ? json_encode($data) : null
-    ]);
-    $out = curl_exec($ch);
+function generateOtp($length = 6) {
+    global $baseUrl;
+    $ch = curl_init("$baseUrl/auth/otp/generate/$length");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
     curl_close($ch);
-    return json_decode($out, true);
+    return json_decode($response, true);
 }
 
-$otp = post("$BASE_URL/auth/otp/generate/6");
-echo "OTP: " . $otp['code'] . PHP_EOL;
+function sendOtpSms($phone, $otp) {
+    global $baseUrl, $smsProvider, $smsKey, $smsSecret, $smsSender;
+    $payload = [
+        "sender" => [
+            "provider" => $smsProvider,
+            "apiKey" => $smsKey,
+            "apiSecret" => $smsSecret,
+            "sender" => $smsSender,
+            "text" => "Your OTP is $otp"
+        ]
+    ];
+    $ch = curl_init("$baseUrl/auth/otp/send/sms/$phone");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($response, true);
+}
 
-$payload = [
-    "sender" => [
-        "email" => getenv('GMAIL_USER'),
-        "pass"  => getenv('GMAIL_APP_PASS'),
-        "subject"=> "Your OTP Code",
-        "text"  => "Your OTP code is: {$otp['code']}",
-        "html"  => "&lt;b&gt;Your OTP code is: {$otp['code']}&lt;/b&gt;"
-    ]
-];
-post("$BASE_URL/auth/otp/send/gmail/" . getenv('TEST_EMAIL'), $payload);
+function verifyOtp($phone, $otp) {
+    global $baseUrl;
+    $payload = ["otp" => $otp];
+    $ch = curl_init("$baseUrl/auth/otp/verify/$phone");
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($response, true);
+}
+
+// -------- MAIN --------
+$otpData = generateOtp();
+$otp = $otpData['code'];
+echo "Generated OTP: $otp\n";
+// print_r(sendOtpSms("+998901234567", $otp));
+// print_r(verifyOtp("+998901234567", $otp));
+
 </code></pre>
         </div>
       </div>
@@ -187,41 +211,78 @@ post("$BASE_URL/auth/otp/send/gmail/" . getenv('TEST_EMAIL'), $payload);
           <pre><code class="language-go">package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"os"
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "io/ioutil"
+    "net/http"
+    "os"
 )
 
-var baseURL = os.Getenv("OTP_BASE_URL")
-if baseURL == "" { baseURL = "https://auth-verify-sy2y.onrender.com/api" }
+var baseUrl = getEnv("OTP_BASE_URL", "https://auth-verify-sy2y.onrender.com/api")
+var smsProvider = os.Getenv("SMS_PROVIDER")
+var smsKey = os.Getenv("SMS_KEY")
+var smsSecret = os.Getenv("SMS_SECRET")
+var smsSender = os.Getenv("SMS_SENDER")
 
-func postJSON(url string, payload interface{}) map[string]interface{} {
-	b, _ := json.Marshal(payload)
-	resp, _ := http.Post(url, "application/json", bytes.NewBuffer(b))
-	defer resp.Body.Close()
-	var out map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&out)
-	return out
+func getEnv(key, fallback string) string {
+    if value := os.Getenv(key); value != "" {
+        return value
+    }
+    return fallback
+}
+
+func generateOtp(length int) (map[string]interface{}, error) {
+    resp, err := http.Post(fmt.Sprintf("%s/auth/otp/generate/%d", baseUrl, length), "application/json", nil)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    return result, nil
+}
+
+func sendOtpSms(phone, otp string) (map[string]interface{}, error) {
+    payload := map[string]interface{}{
+        "sender": map[string]string{
+            "provider": smsProvider,
+            "apiKey":   smsKey,
+            "apiSecret": smsSecret,
+            "sender":   smsSender,
+            "text":     "Your OTP is " + otp,
+        },
+    }
+    body, _ := json.Marshal(payload)
+    resp, err := http.Post(fmt.Sprintf("%s/auth/otp/send/sms/%s", baseUrl, phone), "application/json", bytes.NewBuffer(body))
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    return result, nil
+}
+
+func verifyOtp(phone, otp string) (map[string]interface{}, error) {
+    payload := map[string]string{"otp": otp}
+    body, _ := json.Marshal(payload)
+    resp, err := http.Post(fmt.Sprintf("%s/auth/otp/verify/%s", baseUrl, phone), "application/json", bytes.NewBuffer(body))
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    var result map[string]interface{}
+    json.NewDecoder(resp.Body).Decode(&result)
+    return result, nil
 }
 
 func main() {
-	// 1. Generate
-	otp := postJSON(fmt.Sprintf("%s/auth/otp/generate/6", baseURL), nil)
-	code := otp["code"].(string)
-	fmt.Println("OTP:", code)
-
-	// 2. Gmail
-	gmailPayload := map[string]interface{}{
-		"sender": map[string]string{
-			"email":   os.Getenv("GMAIL_USER"),
-			"pass":    os.Getenv("GMAIL_APP_PASS"),
-			"subject": "Your OTP Code",
-			"text":    fmt.Sprintf("Your OTP code is: %s", code),
-			"html":    fmt.Sprintf("&lt;b&gt;Your OTP code is: %s&lt;/b&gt;", code),
-		},
-	}
-	postJSON(fmt.Sprintf("%s/auth/otp/send/gmail/%s", baseURL, os.Getenv("TEST_EMAIL")), gmailPayload)
+    otpData, _ := generateOtp(6)
+    otp := otpData["code"].(string)
+    fmt.Println("Generated OTP:", otp)
+    // sendOtpSms("+998901234567", otp)
+    // verifyOtp("+998901234567", otp)
 }
 </code></pre>
         </div>
@@ -237,80 +298,128 @@ import java.net.http.*;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class OTPDemo {
-    private static final String BASE = System.getenv("OTP_BASE_URL") != null ?
-            System.getenv("OTP_BASE_URL") : "https://auth-verify-sy2y.onrender.com/api";
-    private static final HttpClient client = HttpClient.newHttpClient();
+public class OTPExample {
+    private static final String BASE_URL = System.getenv().getOrDefault("OTP_BASE_URL", "https://auth-verify-sy2y.onrender.com/api");
+    private static final String SMS_PROVIDER = System.getenv("SMS_PROVIDER");
+    private static final String SMS_KEY = System.getenv("SMS_KEY");
+    private static final String SMS_SECRET = System.getenv("SMS_SECRET");
+    private static final String SMS_SENDER = System.getenv("SMS_SENDER");
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static void main(String[] args) throws Exception {
-        // 1. Generate
-        var genReq = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/auth/otp/generate/6"))
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
-        var genResp = client.send(genReq, HttpResponse.BodyHandlers.ofString());
-        @SuppressWarnings("unchecked")
-        Map&lt;String,Object&gt; otp = mapper.readValue(genResp.body(), Map.class);
-        String code = (String) otp.get("code");
-        System.out.println("OTP: " + code);
+    public static Map<String,Object> generateOtp(int length) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/auth/otp/generate/" + length))
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return mapper.readValue(response.body(), Map.class);
+    }
 
-        // 2. Gmail
-        Map&lt;String,Object&gt; sender = Map.of(
-            "email", System.getenv("GMAIL_USER"),
-            "pass",  System.getenv("GMAIL_APP_PASS"),
-            "subject","Your OTP Code",
-            "text", "Your OTP code is: "+code,
-            "html", "&lt;b&gt;Your OTP code is: "+code+"&lt;/b&gt;"
-        );
-        var payload = Map.of("sender", sender);
-        var gmailReq = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/auth/otp/send/gmail/" + System.getenv("TEST_EMAIL")))
-                .header("Content-Type","application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload)))
-                .build();
-        client.send(gmailReq, HttpResponse.BodyHandlers.ofString());
+    public static Map<String,Object> sendOtpSms(String phone, String otp) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        Map<String,Object> payload = Map.of("sender", Map.of(
+            "provider", SMS_PROVIDER,
+            "apiKey", SMS_KEY,
+            "apiSecret", SMS_SECRET,
+            "sender", SMS_SENDER,
+            "text", "Your OTP is " + otp
+        ));
+        String json = mapper.writeValueAsString(payload);
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/auth/otp/send/sms/" + phone))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return mapper.readValue(response.body(), Map.class);
+    }
+
+    public static Map<String,Object> verifyOtp(String phone, String otp) throws Exception {
+        HttpClient client = HttpClient.newHttpClient();
+        String json = mapper.writeValueAsString(Map.of("otp", otp));
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/auth/otp/verify/" + phone))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        return mapper.readValue(response.body(), Map.class);
+    }
+
+    public static void main(String[] args) throws Exception {
+        Map<String,Object> otpData = generateOtp(6);
+        String otp = otpData.get("code").toString();
+        System.out.println("Generated OTP: " + otp);
+        // sendOtpSms("+998901234567", otp);
+        // verifyOtp("+998901234567", otp);
     }
 }
+
 </code></pre>
         </div>
       </div>
 
       <!-- ==================== C# ==================== -->
       <div class="panel hidden" data-lang="csharp">
-        <h3 class="text-2xl font-semibold mb-3">C# (HttpClient)</h3>
+        <h3 class="text-2xl font-semibold mb-3">C# (.NET 6+)</h3>
         <div class="relative">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           <pre><code class="language-csharp">using System;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 
-class Program {
-    static readonly HttpClient client = new HttpClient();
-    static readonly string baseUrl = Environment.GetEnvironmentVariable("OTP_BASE_URL") ?? "https://auth-verify-sy2y.onrender.com/api";
+class OTPExample {
+    static string BASE_URL = Environment.GetEnvironmentVariable("OTP_BASE_URL") ?? "https://auth-verify-sy2y.onrender.com/api";
+    static string SMS_PROVIDER = Environment.GetEnvironmentVariable("SMS_PROVIDER");
+    static string SMS_KEY = Environment.GetEnvironmentVariable("SMS_KEY");
+    static string SMS_SECRET = Environment.GetEnvironmentVariable("SMS_SECRET");
+    static string SMS_SENDER = Environment.GetEnvironmentVariable("SMS_SENDER");
+
+    static async Task<JsonElement> GenerateOtp(int length = 6) {
+        using var client = new HttpClient();
+        var response = await client.PostAsync($"{BASE_URL}/auth/otp/generate/{length}", null);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
+    static async Task<JsonElement> SendOtpSms(string phone, string otp) {
+        using var client = new HttpClient();
+        var payload = new {
+            sender = new {
+                provider = SMS_PROVIDER,
+                apiKey = SMS_KEY,
+                apiSecret = SMS_SECRET,
+                sender = SMS_SENDER,
+                text = $"Your OTP is {otp}"
+            }
+        };
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        var response = await client.PostAsync($"{BASE_URL}/auth/otp/send/sms/{phone}", content);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
+    static async Task<JsonElement> VerifyOtp(string phone, string otp) {
+        using var client = new HttpClient();
+        var payload = new { otp = otp };
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        var response = await client.PostAsync($"{BASE_URL}/auth/otp/verify/{phone}", content);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
 
     static async Task Main() {
-        // 1. Generate
-        var otpResp = await client.PostAsync($"{baseUrl}/auth/otp/generate/6", null);
-        var otpJson = await otpResp.Content.ReadAsStringAsync();
-        dynamic otp = JsonConvert.DeserializeObject(otpJson);
-        string code = otp.code;
-        Console.WriteLine($"OTP: {code}");
-
-        // 2. Gmail
-        var sender = new Dictionary&lt;string, string&gt;{
-            {"email", Environment.GetEnvironmentVariable("GMAIL_USER")},
-            {"pass",  Environment.GetEnvironmentVariable("GMAIL_APP_PASS")},
-            {"subject","Your OTP Code"},
-            {"text", $"Your OTP code is: {code}"},
-            {"html", $"&lt;b&gt;Your OTP code is: {code}&lt;/b&gt;"}
-        };
-        var payload = new { sender };
-        var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-        await client.PostAsync($"{baseUrl}/auth/otp/send/gmail/{Environment.GetEnvironmentVariable("TEST_EMAIL")}", content);
+        var otpData = await GenerateOtp();
+        string otp = otpData.GetProperty("code").GetString();
+        Console.WriteLine("Generated OTP: " + otp);
+        // await SendOtpSms("+998901234567", otp);
+        // await VerifyOtp("+998901234567", otp);
     }
 }
 </code></pre>
@@ -326,37 +435,47 @@ class Program {
 require 'json'
 require 'uri'
 
-BASE   = ENV['OTP_BASE_URL'] || 'https://auth-verify-sy2y.onrender.com/api'
-GMAIL  = ENV['GMAIL_USER']
-PASS   = ENV['GMAIL_APP_PASS']
-EMAIL  = ENV['TEST_EMAIL']
+BASE_URL = ENV['OTP_BASE_URL'] || 'https://auth-verify-sy2y.onrender.com/api'
+SMS_PROVIDER = ENV['SMS_PROVIDER']
+SMS_KEY = ENV['SMS_KEY']
+SMS_SECRET = ENV['SMS_SECRET']
+SMS_SENDER = ENV['SMS_SENDER']
 
-def post(uri, payload = nil)
-  req = Net::HTTP::Post.new(uri)
-  req['Content-Type'] = 'application/json'
-  req.body = payload.to_json if payload
-  Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
-    http.request(req)
-  end
+def generate_otp(length = 6)
+  uri = URI("#{BASE_URL}/auth/otp/generate/#{length}")
+  res = Net::HTTP.post(uri, ''.to_json, "Content-Type" => "application/json")
+  JSON.parse(res.body)
 end
 
-# 1. Generate
-uri = URI("#{BASE}/auth/otp/generate/6")
-otp = JSON.parse(post(uri).body)
-code = otp['code']
-puts "OTP: #{code}"
-
-# 2. Gmail
-payload = {
-  sender: {
-    email: GMAIL,
-    pass: PASS,
-    subject: 'Your OTP Code',
-    text: "Your OTP code is: #{code}",
-    html: "&lt;b&gt;Your OTP code is: #{code}&lt;/b&gt;"
+def send_otp_sms(phone, otp)
+  uri = URI("#{BASE_URL}/auth/otp/send/sms/#{phone}")
+  payload = {
+    sender: {
+      provider: SMS_PROVIDER,
+      apiKey: SMS_KEY,
+      apiSecret: SMS_SECRET,
+      sender: SMS_SENDER,
+      text: "Your OTP is #{otp}"
+    }
   }
-}
-post(URI("#{BASE}/auth/otp/send/gmail/#{EMAIL}"), payload)
+  res = Net::HTTP.post(uri, payload.to_json, "Content-Type" => "application/json")
+  JSON.parse(res.body)
+end
+
+def verify_otp(phone, otp)
+  uri = URI("#{BASE_URL}/auth/otp/verify/#{phone}")
+  payload = { otp: otp }
+  res = Net::HTTP.post(uri, payload.to_json, "Content-Type" => "application/json")
+  JSON.parse(res.body)
+end
+
+# ----- MAIN -----
+otp_data = generate_otp()
+otp = otp_data["code"]
+puts "Generated OTP: #{otp}"
+# send_otp_sms("+998901234567", otp)
+# verify_otp("+998901234567", otp)
+
 </code></pre>
         </div>
       </div>
