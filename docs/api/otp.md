@@ -82,6 +82,88 @@ otp.send("user@example.com", options, (err, info) => {
     else console.log(info);
 });
 ```
+#### 📘 Auth-Verify SMS API — Full Guide
+Auth-Verify supports sending OTPs via SMS using **30+ global SMS providers**.
+##### 1️⃣ Initialize SMS Sender
+Before sending SMS, you must configure your sender:
+```js
+auth.sender({
+  via: "sms",               // REQUIRED — "sms" or "email" or "telegram"
+  provider: "twilio",       // REQUIRED — choose provider
+  apiKey: process.env.TWILIO_SID,       // varies per provider
+  apiSecret: process.env.TWILIO_TOKEN,  // varies per provider
+  sender: "+15005550006",   // sender phone or ID
+  mock: false               // optional: true = no real SMS sent
+});
+```
+##### 2️⃣ Send OTP
+```js
+const smsResponse = await auth.otp.send("+998901234567");
+console.log(smsResponse);
+```
+##### ✅ Example Response
+```json
+{
+  "status": "SENT",
+  "provider": "Twilio",
+  "to": "+998901234567"
+}
+```
+
+##### 3️⃣ Mock Mode for Testing
+```js
+auth.sender({
+  via: "sms",
+  provider: "twilio",
+  mock: true
+});
+```
+
+Console output:
+```bash
+📱 [Mock SMS via twilio]
+→ To: +998901234567
+→ Message: Your OTP is 123456
+```
+##### 5️⃣ Supported SMS Providers & Example Config
+
+| Provider          | Config Example                                           | Notes                        |
+| ----------------- | -------------------------------------------------------- | ---------------------------- |
+| Twilio            | `apiKey = SID, apiSecret = TOKEN, sender = +15005550006` | Global                       |
+| Vonage / Nexmo    | `apiKey, apiSecret, sender`                              | Global                       |
+| Infobip           | `apiKey, sender`                                         | Global / EU strong           |
+| Eskiz             | `email, password, sender`                                | Uzbekistan                   |
+| PlayMobile        | `apiKey, apiSecret, sender`                              | Uzbekistan                   |
+| MSG91             | `apiKey, templateId = apiSecret`                         | India                        |
+| Telesign          | `apiKey, apiSecret`                                      | Global                       |
+| SMS.ru            | `apiKey`                                                 | Russia                       |
+| TextLocal         | `apiKey, sender`                                         | India/UK                     |
+| ClickSend         | `apiKey, apiSecret, sender`                              | Global                       |
+| Sinch             | `apiKey, apiSecret`                                      | Global                       |
+| Telnyx            | `apiKey, sender`                                         | Global                       |
+| NetGSM            | `apiKey, apiSecret, sender`                              | Turkey                       |
+| KaveNegar         | `apiKey`                                                 | Iran                         |
+| Unifonic          | `apiKey, sender`                                         | Saudi Arabia                 |
+| Alibaba Cloud SMS | `apiKey, template_id, region, sender`                    | China                        |
+| Firebase          | *client SDK only*                                        | OTP must be sent client-side |
+| CheapGlobalsms    | `apiKey, apiSecret, sender`                              | Global                       |
+| Africa's Talking  | `apiKey, sender`                                         | Africa                       |
+| MessageBird       | `apiKey, sender`                                         | Global                       |
+| SMSAPI            | `apiKey, sender`                                         | Europe                       |
+| Clickatell        | `apiKey, sender`                                         | Global                       |
+| Plivo             | `apiKey, apiSecret, sender`                              | Global                       |
+| Vibes             | `apiKey`                                                 | US                           |
+| SMS Gateway Hub   | `apiKey, sender`                                         | India                        |
+| TextMagic         | `apiKey, apiSecret, sender`                              | Global                       |
+> All providers use the same `sendSMS` helper, just change provider and API credentials.
+##### Error handling
+```js
+try {
+  const result = await auth.otp.send("+998901234567");
+} catch (err) {
+  console.error("SMS failed:", err.message);
+}
+```
 
 ### 🔑 Verify OTP
 ```js
