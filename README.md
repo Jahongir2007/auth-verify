@@ -51,13 +51,13 @@ auth.otp.sender({
 auth.otp.send('alice@example.com', (err)=>{
   if(err) console.log(err);
   console.log("OTP sent!");
+  // Verify OTP
+  auth.otp.verify('alice@example.com', '123456', (err, valid)=>{
+    if(err) console.log(err);
+    if(valid) console.log('Correct');
+    else console.log('Incorrect');
+  });
 });
 
-// Verify OTP
-auth.otp.verify('alice@example.com', '123456', (err, valid)=>{
-  if(err) console.log(err);
-  if(valid) console.log('Correct');
-  else console.log('Incorrect');
-});
 ```
 [For all documentation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md) 
