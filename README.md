@@ -43,7 +43,7 @@ const auth = new AuthVerify({ storeTokens: "memory" });
 auth.otp.sender({
     via: 'email',
     sender: 'johndoe@example.com',
-    pass: 'YOUR_APP_PASS'
+    pass: 'YOUR_APP_PASS',
     service: 'gmail'
 });
 
