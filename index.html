@@ -1,170 +1,229 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>auth-verify • All about authentication for Node.js</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth-Verify all for authentication</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
   <style>
-    :root{
-      --bg:#0f1724;
-      --card:#0b1220;
-      --muted:#94a3b8;
-      --accent:#6ee7b7;
-      --glass: rgba(255,255,255,0.03);
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: #000;      /* PURE DARK */
+      color: #eaeaea;
+      overflow-x: hidden;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#071028 0%, #071833 60%);color:#e6eef8}
-    .container{max-width:1100px;margin:32px auto;padding:24px}
 
-    header{display:flex;align-items:center;gap:18px}
-    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:800;color:#04212a}
-    h1{font-size:28px;margin:0}
-    p.lead{color:var(--muted);margin:6px 0 24px}
+    /* Subtle glowing shapes (not gradients) */
+    .glow, .glow2 {
+      position: absolute;
+      width: 350px;
+      height: 350px;
+      background: #0070f3;
+      opacity: 0.15;
+      filter: blur(160px);
+      border-radius: 50%;
+      z-index: -1;
+      animation: float 15s infinite ease-in-out;
+    }
+    .glow2 {
+      background: #00d4ff;
+      animation-duration: 19s;
+    }
 
-    .grid{display:grid;grid-template-columns:1fr 420px;gap:28px}
-    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    @keyframes float {
+      0% { transform: translate(0,0); }
+      50% { transform: translate(40px,-40px); }
+      100% { transform: translate(0,0); }
+    }
 
-    .features{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .feature{background:var(--glass);padding:10px;border-radius:8px;color:var(--muted);font-size:14px}
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 130px 20px;
+      position: relative;
+    }
 
-    .install{background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:8px;color:var(--muted);display:flex;gap:12px;align-items:center}
-    .btn{background:var(--accent);color:#04212a;padding:10px 14px;border-radius:8px;font-weight:700;border:none;cursor:pointer}
+    h1 {
+      font-size: 4.3rem;
+      font-weight: 900;
+      color: white; /* SOLID WHITE */
+      letter-spacing: -1px;
+    }
 
-    /* code area */
-    .code-wrap{background:#020617;padding:18px;border-radius:10px;color:#cbd5e1;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;font-size:13px;line-height:1.5;border:1px solid rgba(255,255,255,0.03)}
-    pre{margin:0;white-space:pre-wrap;word-break:break-word}
+    .subtitle {
+      font-size: 1.3rem;
+      max-width: 650px;
+      color: #bdbdbd;
+      margin: 20px auto;
+    }
 
-    /* typing cursor */
-    .typed {display:block;}
-    .cursor{display:inline-block;width:12px;background:linear-gradient(90deg,#e6eef8,#6ee7b7);margin-left:6px;height:1.1em;border-radius:3px;vertical-align:middle;animation:blink 1s steps(2) infinite}
-    @keyframes blink{50%{opacity:0}}
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: #0070f3; /* solid blue */
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(0,118,255,0.25);
+      text-decoration: none;
+      transition: 0.25s;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,118,255,0.35);
+    }
 
-    footer{margin:28px 0 80px;color:var(--muted);font-size:13px;text-align:center}
+    .btn.secondary {
+      background: transparent;
+      border: 2px solid #333;
+      color: #ccc;
+      box-shadow: none;
+    }
+    .btn.secondary:hover {
+      border-color: #555;
+      color: white;
+    }
 
-    /* responsive */
-    @media (max-width:980px){.grid{grid-template-columns:1fr;}.logo{width:56px;height:56px}.container{padding:14px}}
+    /* SECTION */
+    section {
+      max-width: 900px;
+      padding: 0 20px;
+      margin: 60px auto;
+    }
+
+    h2 {
+      font-size: 2.4rem;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    /* Card */
+    .card {
+      background: #0a0a0a;   /* pure dark block */
+      padding: 24px;
+      border-radius: 14px;
+      border: 1px solid #111;
+      box-shadow: 0 0 18px rgba(0,0,0,0.35);
+      margin-top: 20px;
+    }
+
+    pre {
+      background: #0e0e0e;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #1a1a1a;
+      overflow-x: auto;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px;
+      margin-top: 80px;
+      color: #777;
+      background: #050505;
+    }
   </style>
 </head>
-<body>
-  <div class="container">
-    <header>
-      <div class="logo">AV</div>
-      <div>
-        <h1>auth-verify — OTP &amp; JWT made simple</h1>
-        <p class="lead">A tiny, battle‑tested Node.js library for generating and sending OTPs / TOTPs, issuing JWTs, revoking tokens and managing sessions (memory or Redis).</p>
+
+<body $url="http://localhost:3000">
+
+  <!-- Glow shapes -->
+  <div class="glow" style="top:-120px; left:-80px"></div>
+  <div class="glow2" style="bottom:-80px; right:-60px"></div>
+
+  <!-- HERO -->
+  <header class="hero">
+    <h1>All in one</h1>
+    <p class="subtitle">Auth-Verify Node.js library for handling OTP, TOTP, JWT, Passkeys (Webauthn / Passwordless login), MagicLinks, Password Hashing and sending OTP various channels (Email, SMS, Telegram and WhatsApp).</p>
+
+    <a href="https://github.com/jahongir2007/fetchtl" class="btn">GitHub →</a>
+    <a href="https://github.com/Jahongir2007/fetchtl/tree/main#readme" class="btn secondary">Documentation</a>
+  </header>
+
+  <!-- FEATURES -->
+  <section>
+    <h2>🚀 Features</h2>
+
+    <div class="card" style="display:flex; gap:40px; flex-wrap:wrap;">
+
+      <div style="flex:1; min-width:280px;">
+        <h3>Backend</h3>
+        <ul>
+          <li><code>OTPManager</code> — for sending OTP and verifying it</li>
+          <li><code>TOTPManager</code> — for generating Time-based OTP and make it QR codes</li>
+          <li><code>JWTManager</code> — for signing, decoding, verifying, revoking, refreshing JWT tokens</li>
+          <li><code>MagiclinkManager</code> — for making magic links and sending them to emails</li>
+          <li><code>OAuthManager</code> — for handling OAuth login and registration</li>
+        </ul>
       </div>
-    </header>
-
-    <div class="grid" style="margin-top:18px">
-      <div>
-        <div class="card">
-          <h3 style="margin-top:0">Why auth-verify?</h3>
-          <div class="features">
-            <div class="feature">✅ Secure OTP generation (crypto-based) and verification</div>
-            <div class="feature">✅ TOTP code and QR code generation (base32) and verification</div>
-            <div class="feature">✅ Email & SMS & Telegram senders</div>
-            <div class="feature">✅ JWT signing, verify & revoke, middleware handling</div>
-            <div class="feature">✅ Memory or Redis backing for scale</div>
-            <div class="feature">✅ Cookie auto-handling for JWT</div>
-            <div class="feature">✅ OAuth v2 integration</div>
-          </div>
-
-          <h4 style="margin-top:16px">Install</h4>
-          <div class="install">
-            <code>npm i auth-verify</code>
-            <button class="btn" onclick="copy('npm i auth-verify')">Copy</button>
-          </div>
-
-          <h4 style="margin-top:14px">Quick start</h4>
-          <div class="code-wrap" aria-hidden>
-            <pre id="typed-code" class="typed"></pre><span class="cursor" id="cursor"></span>
-          </div>
-
-          <p style="margin-top:12px;color:var(--muted)">Tip: Use <code>auth.setSender({...})</code> to configure email/sms/telegram or <code>auth.register.sender()</code> to add a custom transmitter.</p>
-        </div>
-
-        <div class="card" style="margin-top:18px">
-          <h3 style="margin-top:0">Examples</h3>
-          <div style="display:grid;gap:10px">
-            <details class="code-wrap"><summary style="cursor:pointer">Sign & verify JWT</summary>
-              <pre>const token = await auth.jwt.sign({ userId: 123 }, '1h')
-await auth.jwt.verify(token)</pre>
-            </details>
-
-            <details class="code-wrap"><summary style="cursor:pointer">OTP flow (email)</summary>
-              <pre>auth.otp.generate(6).set('user@example.com')
-await auth.otp.message({ to: 'user@example.com' })
-await auth.otp.verify({ check: 'user@example.com', code: '123456' })</pre>
-            </details>
-
-            <details class="code-wrap"><summary style="cursor:pointer">Custom sender (dev)</summary>
-              <pre>// register a custom sender
-auth.register.sender('console', async ({to, code}) => console.log('deliver', to, code))
-await auth.use('console').send({ to: '+998901234567', code: '123456' })</pre>
-            </details>
-          </div>
-        </div>
-
-      </div>
-
-      <aside>
-        <div class="card">
-          <h3 style="margin-top:0">Features & API</h3>
-          <ul style="color:var(--muted);line-height:1.8">
-            <li><strong>JWTManager</strong>: <code>sign()</code>, <code>verify()</code>, <code>decode()</code>, <code>revoke()</code>, <code>revokeUntil()</code>, <code>isRevoked()</code> and <code>protect()</code> middleware</li>
-            <li><strong>OTPManager</strong>: <code>generate()</code>, <code>set()</code>, <code>message()</code>, <code>verify()</code>, <code>resend()</code>, <code>cooldown()</code></li>
-            <li><strong>TOTPManager</strong>: <code>generate()</code>, <code>secret()</code>, <code>uri()</code>, <code>verify()</code>, <code>qrcode()</code>, <code>verify()</code></li>
-            <li><strong>OAuthManager</strong>: <code>google()</code>, <code>facebook()</code>, <code>github()</code>, <code>x()</code>, <code>linkedin()</code>, <code>microsoft()</code>, <code>apple()</code>, <code>discord()</code>, <code>slack()</code>, <code>telegram()</code>, <code>whatsapp()</code>, <code>register()</code> and <code>use()</code></li>
-            <li><strong>SessionManager</strong>: <code>create()</code>, <code>verify()</code>, <code>destroy()</code></li>
-            <li>Supports callback and Promise styles where appropriate</li>
-          </ul>
-
-          <h4 style="margin-top:12px">Dev-mode</h4>
-          <p style="color:var(--muted)">For testing or custom integration register a sender or pass your own bot instance to avoid external provider costs.</p>
-
-          <h4 style="margin-top:12px">Links</h4>
-          <p><a href="https://github.com/Jahongir2007/auth-verify" style="color:var(--accent);text-decoration:none">Repository</a> · <a href="https://www.npmjs.com/package/auth-verify" style="color:var(--accent);text-decoration:none">NPM</a></p>
-        </div>
-
-        <div class="card" style="margin-top:12px;text-align:center">
-          <h4 style="margin:0">Contribute</h4>
-          <p style="color:var(--muted)">Star, fork and send PRs — contributions welcome ✨</p>
-          <button class="btn" onclick="window.location='https://github.com/Jahongir2007/auth-verify'">Get started</button>
-        </div>
-      </aside>
     </div>
+  </section>
 
-    <footer>
-      Made with ❤️ by the Jahongir Sobirov. Read the docs on GitHub for deep API details.
-    </footer>
-  </div>
+  <!-- INSTALL -->
+  <section id="install">
+    <h2>📦 Install</h2>
 
-  <script>
-    // Typing animation for quick-start code
-    const code = `const AuthVerify = require('auth-verify');\n\nconst auth = new AuthVerify({ jwtSecret: 'SUPER_SECRET', storeTokens: 'memory' });\n\n// JWT\nconst token = await auth.jwt.sign({ user: 'alice' }, '1h');\nconsole.log('token:', token);\n\n// OTP (email)\nauth.otp.generate(6).set('alice@example.com');\nawait auth.otp.message({ to: 'alice@example.com' });\n// verify\nawait auth.otp.verify({ check: 'alice@example.com', code: '123456' });`;
+    <div class="card">
+      <pre><code class="language-bash">npm install auth-verify</code></pre>
 
-    const out = document.getElementById('typed-code');
-    const cursor = document.getElementById('cursor');
-    let i = 0;
+      <p>CDN:</p>
+<pre><code class="language-html">&lt;script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+  </section>
 
-    function typeNext() {
-      if (i <= code.length) {
-        out.textContent = code.slice(0, i);
-        i++;
-        setTimeout(typeNext, 18 + Math.random()*40);
-      } else {
-        // loop after a small pause
-        setTimeout(()=>{i=0; typeNext()}, 3000);
-      }
-    }
-    typeNext();
+  <!-- 
+  DEMO
+  <section>
+    <h2>🧪 Live Demo</h2>
+    <p>This box updates every second using <code>$poll</code>.</p>
 
-    function copy(text){
-      navigator.clipboard?.writeText(text).then(()=>{
-        alert('Copied to clipboard')
-      }).catch(()=>alert('Copy failed'))
-    }
-  </script>
+    <div id="timeBox" class="card"
+      $get="/api/time"
+      $poll="1000">
+      Current time in London: $time
+    </div>
+  </section> -->
+
+  <!-- EXAMPLE -->
+  <section>
+    <h2>💡 Example Usage</h2>
+
+    <div class="card">
+<pre><code class="language-js">
+  const AuthVerify = require("auth-verify");
+const auth = new AuthVerify({ storeTokens: "memory" });
+
+// Connecting sender
+auth.otp.sender({
+    via: 'email',
+    sender: 'johndoe@example.com',
+    pass: 'YOUR_APP_PASS',
+    service: 'gmail'
+});
+
+(async () => {
+  let sent = await auth.otp.send('alice@example.com');
+  if(sent) {
+    let valid = await auth.otp.verify('alice@example.com', auth.otp.code);
+    if(valid) console.log('Correct OTP code');
+    else console.log('Incorrect OTP code');   
+  }
+})();
+</code></pre>
+    </div>
+  </section>
+
+  <footer>
+    Built by Jahongir Sobirov • auth-verify © 2025
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/fetchtl/fetchtl.js"></script>
 </body>
 </html>
