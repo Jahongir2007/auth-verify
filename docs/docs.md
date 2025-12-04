@@ -131,6 +131,7 @@ const token = await auth.jwt.sign(
 | `options.res`    | `Response`         | —       | Express response object (sets cookie automatically)      |
 | `options.secure` | `boolean`          | `true`  | If `false`, cookie is not secure (for localhost testing) |
 
+
 #### Returns:
 `Promise<string>` → The generated JWT token.
 
@@ -170,6 +171,7 @@ const { accessToken, refreshToken } = auth.jwt.issue({ id: 'user_123' });
 | Name | Type   | Description                    |
 | ---- | ------ | ------------------------------ |
 | user | object | User object with `id` property |
+
 **Returns:**
 ```js
 { accessToken: string, refreshToken: string }
@@ -188,6 +190,7 @@ const newTokens = auth.jwt.refresh(refreshToken);
 | Name         | Type   | Description                  |
 | ------------ | ------ | ---------------------------- |
 | refreshToken | string | A valid refresh token string |
+
 **Returns:**
 ```js
 { accessToken: string, refreshToken: string }
