@@ -127,10 +127,13 @@
       color: #777;
       background: #050505;
     }
+    .invert {
+      filter: invert(1);
+    }
   </style>
 </head>
 
-<body $url="http://localhost:3000">
+<body>
 
   <!-- Glow shapes -->
   <div class="glow" style="top:-120px; left:-80px"></div>
@@ -175,19 +178,16 @@
 <pre><code class="language-html">&lt;script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"&gt;&lt;/script&gt;</code></pre>
     </div>
   </section>
-
-  <!-- 
-  DEMO
+  
   <section>
     <h2>🧪 Live Demo</h2>
-    <p>This box updates every second using <code>$poll</code>.</p>
-
-    <div id="timeBox" class="card"
-      $get="/api/time"
-      $poll="1000">
-      Current time in London: $time
-    </div>
-  </section> -->
+    <p>You can get your OTP code by scanning QR code.</p>
+    <button class="btn secondary" id="getQRBtn">Generate QR</button>
+    <img id="qrImage" class="invert" /><br>
+    <input type="text" id="userCode" placeholder="Enter your code">
+    <button class="btn secondary" id="verifyBtn">Verify code</button><br>
+    <span></span>
+  </section>
 
   <!-- EXAMPLE -->
   <section>
@@ -217,13 +217,43 @@ auth.otp.sender({
 </code></pre>
     </div>
   </section>
-
   <footer>
     Built by Jahongir Sobirov • auth-verify © 2025
   </footer>
+  <script>
+    const qrImage = document.getElementById('qrImage');
+  const qrBtn = document.getElementById('getQRBtn');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const userCodeInput = document.getElementById('userCode');
+  const resultSpan = document.querySelector('span');
 
+  const auth = new AuthVerify({
+    apiBase: 'https://auth-verify-live-demo.onrender.com/',
+    qrEl: qrImage
+  });
+
+  // GET QR code
+  qrBtn.addEventListener('click', async () => {
+    auth.get('/api/qr'); // set the URL for GET
+    await auth.qr(); // fetch and display QR
+  });
+
+  // VERIFY code
+  verifyBtn.addEventListener('click', async () => {
+    const userCode = userCodeInput.value;
+
+    auth.post('/api/verify'); // set URL for POST
+    const result = await auth.verify(userCode); // send code to server
+
+    if (result.verified) {
+      resultSpan.innerText = '✅ Verified!';
+    } else {
+      resultSpan.innerText = '❌ Invalid code';
+    }
+  });
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>hljs.highlightAll();</script>
-  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/fetchtl/fetchtl.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jahongir2007/auth-verify/auth-verify.client.js"></script>
 </body>
 </html>
