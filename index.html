@@ -130,6 +130,24 @@
     .invert {
       filter: invert(1);
     }
+     input[type="text"] {
+      width: 260px;
+      padding: 14px 18px;
+      margin-top: 18px;
+      border-radius: 12px;
+      background: #0c0c0c;
+      border: 2px solid #1a1a1a;
+      color: white;
+      font-size: 1rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.35);
+      transition: 0.25s;
+    }
+    input[type="text"]:focus {
+      border-color: #0070f3;
+      box-shadow: 0 0 18px rgba(0,118,255,0.35);
+      outline: none;
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 
