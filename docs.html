@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+    <script src="https://signel.onrender.com/signel.js"></script>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: #000;      /* PURE DARK */
+      color: #eaeaea;
+      overflow-x: hidden;
+    }
+
+    a{
+      color: #eaeaea;
+    }
+
+    /* Subtle glowing shapes (not gradients) */
+    .glow, .glow2 {
+      position: absolute;
+      width: 350px;
+      height: 350px;
+      background: #0070f3;
+      opacity: 0.15;
+      filter: blur(160px);
+      border-radius: 50%;
+      z-index: -1;
+      animation: float 15s infinite ease-in-out;
+    }
+    .glow2 {
+      background: #00d4ff;
+      animation-duration: 19s;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0,0); }
+      50% { transform: translate(40px,-40px); }
+      100% { transform: translate(0,0); }
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 130px 20px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 4.3rem;
+      font-weight: 900;
+      color: white; /* SOLID WHITE */
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      font-size: 1.3rem;
+      max-width: 650px;
+      color: #bdbdbd;
+      margin: 20px auto;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: #0070f3; /* solid blue */
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(0,118,255,0.25);
+      text-decoration: none;
+      transition: 0.25s;
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0,118,255,0.35);
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border: 2px solid #333;
+      color: #ccc;
+      box-shadow: none;
+    }
+    .btn.secondary:hover {
+      border-color: #555;
+      color: white;
+    }
+
+    /* SECTION */
+    section {
+      max-width: 900px;
+      padding: 0 20px;
+      margin: 60px auto;
+    }
+
+    h2 {
+      font-size: 2.4rem;
+      margin-bottom: 15px;
+      color: #fff;
+    }
+
+    /* Card */
+    .card {
+      background: #0a0a0a;   /* pure dark block */
+      padding: 24px;
+      border-radius: 14px;
+      border: 1px solid #111;
+      box-shadow: 0 0 18px rgba(0,0,0,0.35);
+      margin-top: 20px;
+    }
+
+    pre {
+      background: #0e0e0e;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid #1a1a1a;
+      overflow-x: auto;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px;
+      margin-top: 80px;
+      color: #777;
+      background: #050505;
+    }
+    .invert {
+      filter: invert(1);
+    }
+     input[type="text"] {
+      width: 260px;
+      padding: 14px 18px;
+      margin-top: 18px;
+      border-radius: 12px;
+      background: #0c0c0c;
+      border: 2px solid #1a1a1a;
+      color: white;
+      font-size: 1rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.35);
+      transition: 0.25s;
+    }
+    input[type="text"]:focus {
+      border-color: #0070f3;
+      box-shadow: 0 0 18px rgba(0,118,255,0.35);
+      outline: none;
+      transform: translateY(-2px);
+    }
+    /* DOCS LAYOUT */
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  background: #050505;
+  border-right: 1px solid #111;
+  padding: 30px 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar h3 {
+  color: white;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
+.sidebar nav a {
+  display: block;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  color: #bbb;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.sidebar nav a:hover {
+  background: #0f0f0f;
+  color: white;
+}
+
+/* MAIN CONTENT */
+.content {
+  flex: 1;
+  padding: 60px 40px;
+}
+
+/* MOBILE */
+@media (max-width: 900px) {
+  .sidebar {
+    display: none;
+  }
+  .content {
+    padding: 40px 20px;
+  }
+}
+
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: #0a0a0a;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.docs-table th,
+.docs-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #1a1a1a;
+  text-align: left;
+}
+
+.docs-table th {
+  background: #050505;
+  color: white;
+  font-weight: 600;
+}
+
+.docs-table td {
+  color: #ccc;
+}
+
+.docs-table tr:hover {
+  background: #0f0f0f;
+}
+
+.docs-table code {
+  background: #111;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: #7dd3fc;
+}
+
+li {
+  list-style-type: none;
+}
+
+  </style>
+</head>
+<body>
+    <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <h3>Docs</h3>
+        <nav>
+            <a href="#intro">Introduction</a>
+            <a href="#install">Installation</a>
+            <a href="#init">Initalization</a>
+            <a href="#jwt-manager" id="jwt">JWT manager</a>
+            <ul id="jwt-list"></ul>
+            <a href="#otp-manager">OTP manager</a>
+            <a href="#totp-manager">TOTP manager</a>
+            <a href="#oauth-manager">OAuth manager</a>
+            <a href="#passkey-manager">Passkey manager</a>
+            <a href="#magic-manager">Magic Link manager</a>
+            <a href="#session-manager">Session manager</a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="content">
+        <section id="intro">
+        <h2>Introduction</h2>
+        <div class="card">
+           <b>AuthVerify</b> is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications. Auth-verify now supports <b>REST API</b> for generating, sending OTP with email/SMS and verifying it.
+        </div>
+        </section>
+
+        <section id="install">
+        <h2>Installation</h2>
+        <div class="card">
+            <pre><code class="language-bash">
+npm i auth-verify
+            </code></pre>
+        </div>
+        </section>
+
+        <section id="init">
+        <h2>Initalization</h2>
+        <div class="card">
+            <pre><code class="language-js">
+const AuthVerify = require('auth-verify');
+
+const auth = new AuthVerify({
+    jwtSecret: 'your_jwt_secret',
+    cookieName: 'jwt_token',
+    otpExpiry: 300,        // in seconds
+    storeTokens: 'memory', // or 'redis'
+    redisUrl: 'redis://localhost:6379',
+    totp: { digits: 6, step: 30, alg: 'SHA1' },
+    rpName: 'myApp',
+    passExp: '2m',
+    mlSecret: 'ml_secret',
+    mlExpiry: '5m',
+    appUrl: 'https://yourapp.com'
+});
+            </code></pre>
+        </div>
+        <h3>Options explained:</h3>
+        <table class="docs-table">
+            <thead>
+                <tr>
+                <th>Option</th>
+                <th>Default</th>
+                <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                <td><code>jwtSecret</code></td>
+                <td><code>"jwt_secret"</code></td>
+                <td>Secret key for JWT signing</td>
+                </tr>
+                <tr>
+                <td><code>cookieName</code></td>
+                <td><code>"jwt_token"</code></td>
+                <td>Cookie name for JWT storage</td>
+                </tr>
+                <tr>
+                <td><code>otpExpiry</code></td>
+                <td><code>300</code></td>
+                <td>OTP expiration in seconds</td>
+                </tr>
+                <tr>
+                <td><code>storeTokens</code></td>
+                <td><code>"memory"</code></td>
+                <td>Token storage type (<code>memory</code> or <code>redis</code>)</td>
+                </tr>
+                <tr>
+                <td><code>redisUrl</code></td>
+                <td><code>undefined</code></td>
+                <td>Redis connection string if using Redis</td>
+                </tr>
+                <tr>
+                <td><code>totp</code></td>
+                <td><code>{ digits: 6, step: 30, alg: 'SHA1' }</code></td>
+                <td>TOTP configuration</td>
+                </tr>
+                <tr>
+                <td><code>rpName</code></td>
+                <td><code>"auth-verify"</code></td>
+                <td>Relying party name for Passkeys</td>
+                </tr>
+                <tr>
+                <td><code>passExp</code></td>
+                <td><code>"2m"</code></td>
+                <td>Passkey expiration duration</td>
+                </tr>
+                <tr>
+                <td><code>mlSecret</code></td>
+                <td><code>"ml_secret"</code></td>
+                <td>Magic link secret</td>
+                </tr>
+                <tr>
+                <td><code>mlExpiry</code></td>
+                <td><code>"5m"</code></td>
+                <td>Magic link expiration duration</td>
+                </tr>
+                <tr>
+                <td><code>appUrl</code></td>
+                <td><code>"https://yourapp.com"</code></td>
+                <td>App base URL for Magic Links</td>
+                </tr>
+            </tbody>
+            </table>
+
+        </section>
+
+        <section id="jwt-manager">
+        <h2>JWT Manager</h2>
+        <div class="card">
+          <div>
+            <code>AuthVerify</code> includes a powerful <code>jwt</code> manager that simplifies JSON Web Token (JWT) authentication. It supports <b>automatic cookie handling, memory or Redis token storage</b>, and an <b>Express middleware</b> for route protection.
+          </div>  
+          <div>
+            <h3>Setup</h3>
+            <pre><code class="language-js">
+const AuthVerify = require('auth-verify');
+
+const auth = new AuthVerify({
+  jwtSecret: 'super_secret_key',
+  cookieName: 'auth_token',
+  storeTokens: 'redis',         // or 'memory'
+  redisUrl: 'redis://localhost:6379',
+  useAlg: 'HS256',              // or any supported algorithm
+});
+            </code></pre>
+            <p>After initialization, the JWT system is accessible via <code>auth.jwt</code>.</p>
+            <h3>JWT Methods Overview</h3>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>auth.jwt.sign(payload, expiry?, options?)</code></td>
+                  <td>Creates a JWT token and optionally sets it in a cookie</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.verify(tokenOrReq)</code></td>
+                  <td>Verifies a token or extracts it automatically from a request</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.decode(token)</code></td>
+                  <td>Decodes JWT payload without verification</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.revoke(token, revokeTime?)</code></td>
+                  <td>Revokes a token immediately or after a timeout</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.isRevoked(token)</code></td>
+                  <td>Checks whether a token has been revoked</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.protect(options?)</code></td>
+                  <td>Express middleware to protect API routes</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.readCookie(req, name)</code></td>
+                  <td>Reads a JWT from cookies manually</td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.issue(user)</code></td>
+                  <td>Issues an <strong>access token</strong> and a <strong>refresh token</strong></td>
+                </tr>
+                <tr>
+                  <td><code>auth.jwt.refresh(refreshToken)</code></td>
+                  <td>Refreshes an <strong>access token</strong> using a valid refresh token</td>
+                </tr>
+              </tbody>
+            </table>
+
+          </div>
+          <div id="sign-jwt">
+            <h3><code>auth.jwt.sign(payload, expiry?, options?)</code> (Signing JWT)</h3>
+            <p>Signs a new JWT token. Can automatically store it in memory/Redis and set an HTTP-only cookie for browser clients.</p>
+            <pre><code class="language-js">
+const token = await auth.jwt.sign(
+  { id: 'user_123', role: 'admin' },
+  '2h', // expiry time
+  { res } // Express res object to auto-set cookie
+);    
+            </code></pre>
+            <h4>Parameters:</h4>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>payload</code></td>
+                  <td><code>object</code></td>
+                  <td>—</td>
+                  <td>Data to include in the JWT</td>
+                </tr>
+                <tr>
+                  <td><code>expiry</code></td>
+                  <td><code>string | number</code></td>
+                  <td><code>'1h'</code></td>
+                  <td>Expiration time (<code>5m</code>, <code>2h</code>, <code>1d</code>, etc.)</td>
+                </tr>
+                <tr>
+                  <td><code>options.res</code></td>
+                  <td><code>Response</code></td>
+                  <td>—</td>
+                  <td>Express response object (sets cookie automatically)</td>
+                </tr>
+                <tr>
+                  <td><code>options.secure</code></td>
+                  <td><code>boolean</code></td>
+                  <td><code>true</code></td>
+                  <td>If <code>false</code>, cookie is not secure (for localhost testing)</td>
+                </tr>
+              </tbody>
+            </table>
+            <h4>Returns:</h4>
+            <p><code>Promise&lt;string&gt;</code> → The generated JWT token.</p>
+          </div>
+          <div id="verify-jwt">
+            <h3><code>auth.jwt.verify(input)</code> (Verifying JWT)</h3>
+            <p>
+              Verifies and decodes a token. You can pass either a <b>raw JWT token string</b> or an <b>Express request object</b>. When passing <code>req</code>, the library automatically extracts the token from:
+              <ul>
+                <li><code>Authorization</code> header (<code>Bearer &lt;token&gt;</code>)</li>
+                <li>Cookies (<code>auth_token</code> by default)</li>
+              </ul>
+              <pre><code class="language-js">
+// Verify a token string
+const decoded = await auth.jwt.verify(token);
+
+// Verify directly from a request
+const decoded = await auth.jwt.verify(req);
+              </code></pre>
+              <h4>Returns:</h4>
+              <code>Promise&lt;object&gt;</code> → Decoded payload if valid, throws error if invalid or revoked.
+            </p>
+          </div>
+          <div id="decode-jwt">
+            <h3><code>auth.jwt.decode(token)</code> (Decoding JWT)</h3>
+            <p>
+              Decodes a token <b>without verifying</b> the signature (useful for inspection or debugging).
+            <pre><code class="language-js">
+const data = await auth.jwt.decode(token);
+            </code></pre>
+            </p>
+            <h4>Returns:</h4> 
+            Decoded object or <code>null</code>.
+          </div>
+          <div id="issue-jwt">
+            <h3><code>auth.jwt.issue(user)</code> (Issuing JWT)</h3>
+            <p>
+              Issues a new access token and a refresh token for a user.
+            </p>
+            <pre><code class="language-js">
+const { accessToken, refreshToken } = auth.jwt.issue({ id: 'user_123' });
+            </code></pre>
+            <ul>
+              <li><b>Access token:</b> short-lived, used for authentication.</li>
+              <li><b>Refresh token:</b> long-lived, used to get a new access token without logging in again.</li>
+            </ul>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>user</code></td>
+                  <td><code>object</code></td>
+                  <td>User object with <code>id</code> property</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="revoke-jwt">
+            <h3><code>auth.jwt.revoke(token, revokeTime?)</code> (Revoking JWT)</h3>
+            <p>
+              Revokes a token immediately or after a specified duration.
+            </p>
+            <pre><code class="language-js">
+await auth.jwt.revoke(token);      // revoke now
+await auth.jwt.revoke(token, '5m'); // revoke after 5 minutes
+            </code></pre>
+            If using:
+            <ul>
+              <li>
+                <b>memory</b>: the token is removed from internal store.
+              </li>
+              <li>
+                <b>redis</b>: the key is deleted or set to expire.
+              </li>
+            </ul>
+          </div>
+          <div id="protect-jwt">
+            <h3><code>auth.jwt.protect(options)</code> (Protecting routes)</h3>
+            <p>Express middleware for protecting routes that require authentication.</p>
+            <pre><code class="language-js">
+app.get('/dashboard', auth.jwt.protect(), (req, res) => {
+  res.json({ user: req.user });
+});
+            </code></pre>
+Or with extra security options:
+<pre><code class="language-js">
+app.get('/admin',
+  auth.jwt.protect({
+    requiredRole: 'admin',
+    attachProperty: 'sessionUser',
+    onError: (err, req, res) => res.status(403).json({ error: err.message })
+  }),
+  (req, res) => {
+    res.json({ message: `Welcome ${req.sessionUser.id}` });
+  });
+</code></pre>
+            <h4>Options:</h4>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>attachProperty</code></td>
+                  <td><code>string</code></td>
+                  <td><code>'user'</code></td>
+                  <td>Where decoded data is attached on the request</td>
+                </tr>
+                <tr>
+                  <td><code>requiredRole</code></td>
+                  <td><code>string</code></td>
+                  <td><code>null</code></td>
+                  <td>Restricts route access by user role</td>
+                </tr>
+                <tr>
+                  <td><code>cookieName</code></td>
+                  <td><code>string</code></td>
+                  <td>Inherited from AuthVerify</td>
+                  <td>Cookie name to extract token</td>
+                </tr>
+                <tr>
+                  <td><code>headerName</code></td>
+                  <td><code>'authorization'</code></td>
+                  <td><code>string</code></td>
+                  <td>Header name to look for JWT</td>
+                </tr>
+                <tr>
+                  <td><code>extractor</code></td>
+                  <td><code>function</code></td>
+                  <td>—</td>
+                  <td>Custom token extraction logic</td>
+                </tr>
+                <tr>
+                  <td><code>onError</code></td>
+                  <td><code>function</code></td>
+                  <td>—</td>
+                  <td>Custom error handler (<code>err, req, res</code>)</td>
+                </tr>
+              </tbody>
+            </table>
+
+          </div>
+        </div>
+        </section>
+    </main>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script>
+        let myState = state({
+            showJwt: false,
+            jwtList: list([
+              ['sign-jwt', 'Signing JWT'], 
+              ['verify-jwt', 'Verifying JWT'], 
+              ['decode-jwt', 'Decoding JWT'], 
+              ['issue-jwt', 'Issuing JWT'],
+              ['revoke-jwt', 'Revoking JWT'],
+              ['protect-jwt', 'Protecting routes']
+            ])
+        });
+        dom('#jwt').on('click', ()=> myState.showJwt = !myState.showJwt);
+
+        render(function(){
+            if(myState.showJwt){
+                dom('#jwt-list').show().loop(myState, 'jwtList', item => `<li><a href='#${item[0]}'>${item[1]}</a></li>`);
+            }else{
+                dom('#jwt-list').hide();
+            }
+        })
+    </script>
+</body>
+</html>
