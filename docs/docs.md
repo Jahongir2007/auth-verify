@@ -426,6 +426,7 @@ await otp.set("user@example.com");
 ### 📤 Send OTP
 ```js
 await otp.send("user@example.com", {
+    otpLen: 6 // length of otp code
     subject: "Your OTP Code",
     text: "Your OTP is 123456",
     html: "<b>123456</b>"
