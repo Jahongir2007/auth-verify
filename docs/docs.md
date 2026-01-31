@@ -131,7 +131,6 @@ const token = await auth.jwt.sign(
 | `options.res`    | `Response`         | —       | Express response object (sets cookie automatically)      |
 | `options.secure` | `boolean`          | `true`  | If `false`, cookie is not secure (for localhost testing) |
 
-
 #### Returns:
 `Promise<string>` → The generated JWT token.
 
@@ -171,7 +170,6 @@ const { accessToken, refreshToken } = auth.jwt.issue({ id: 'user_123' });
 | Name | Type   | Description                    |
 | ---- | ------ | ------------------------------ |
 | user | object | User object with `id` property |
-
 **Returns:**
 ```js
 { accessToken: string, refreshToken: string }
@@ -190,7 +188,6 @@ const newTokens = auth.jwt.refresh(refreshToken);
 | Name         | Type   | Description                  |
 | ------------ | ------ | ---------------------------- |
 | refreshToken | string | A valid refresh token string |
-
 **Returns:**
 ```js
 { accessToken: string, refreshToken: string }
@@ -346,40 +343,110 @@ otp.sender({
   secure: false
 })
 ```
+
+#### Using API
+```js
+otp.sender({
+  via: "email",
+  service: "api",
+  sender: "your_email@gmail.com",
+  apiService: "resend", // "postmark", "sendgrid"
+  apiKey: "your-api-key"
+})
+```
+
 #### SMS sender
-If you want reals sms sending you should add `mock: false`.
-##### Using infobip:
+#### 📘 Auth-Verify SMS API — Full Guide
+Auth-Verify supports sending OTPs via SMS using **30+ global SMS providers**.
+##### 1️⃣ Initialize SMS Sender
+Before sending SMS, you must configure your sender:
 ```js
 otp.sender({
-  via: 'sms',
-  provider: 'infobip',
-  apiKey: 'API_KEY',
-  apiSecret: 'API_SECRET',
-  sender: 'SENDER_NAME',
-  mock: true // in dev prints message instead of sending
+  via: "sms",               // REQUIRED — "sms" or "email" or "telegram"
+  provider: "twilio",       // REQUIRED — choose provider
+  apiKey: process.env.TWILIO_SID,       // varies per provider
+  apiSecret: process.env.TWILIO_TOKEN,  // varies per provider
+  sender: "+15005550006",   // sender phone or ID
+  mock: false               // optional: true = no real SMS sent
 });
 ```
-##### Using twilio:
+##### 2️⃣ Send OTP
+```js
+const smsResponse = await otp.send("+998901234567");
+console.log(smsResponse);
+```
+##### ✅ Example Response
+```json
+{
+  "status": "SENT",
+  "provider": "Twilio",
+  "to": "+998901234567"
+}
+```
+
+##### 3️⃣ Mock Mode for Testing
 ```js
 otp.sender({
-  via: 'sms',
-  provider: 'twilio',
-  apiKey: 'ACCOUNT_SID',
-  apiSecret: 'AUTH_TOKEN',
-  sender: 'SENDER_NAME',
-  mock: true // in dev prints message instead of sending
+  via: "sms",
+  provider: "twilio",
+  mock: true
 });
 ```
-##### Using vonage:
+
+Console output:
+```bash
+📱 [Mock SMS via twilio]
+→ To: +998901234567
+→ Message: Your OTP is 123456
+```
+##### 5️⃣ Supported SMS Providers & Example Config
+
+| Provider          | Config Example                                           | Notes                        |
+| ----------------- | -------------------------------------------------------- | ---------------------------- |
+| Twilio            | `apiKey = SID, apiSecret = TOKEN, sender = +15005550006` | Global                       |
+| Vonage / Nexmo    | `apiKey, apiSecret, sender`                              | Global                       |
+| Infobip           | `apiKey, sender`                                         | Global / EU strong           |
+| Eskiz             | `email, password, sender`                                | Uzbekistan                   |
+| PlayMobile        | `apiKey, apiSecret, sender`                              | Uzbekistan                   |
+| MSG91             | `apiKey, templateId = apiSecret`                         | India                        |
+| Telesign          | `apiKey, apiSecret`                                      | Global                       |
+| SMS.ru            | `apiKey`                                                 | Russia                       |
+| TextLocal         | `apiKey, sender`                                         | India/UK                     |
+| ClickSend         | `apiKey, apiSecret, sender`                              | Global                       |
+| Sinch             | `apiKey, apiSecret`                                      | Global                       |
+| Telnyx            | `apiKey, sender`                                         | Global                       |
+| NetGSM            | `apiKey, apiSecret, sender`                              | Turkey                       |
+| KaveNegar         | `apiKey`                                                 | Iran                         |
+| Unifonic          | `apiKey, sender`                                         | Saudi Arabia                 |
+| Alibaba Cloud SMS | `apiKey, template_id, region, sender`                    | China                        |
+| Firebase          | *client SDK only*                                        | OTP must be sent client-side |
+| CheapGlobalsms    | `apiKey, apiSecret, sender`                              | Global                       |
+| Africa's Talking  | `apiKey, sender`                                         | Africa                       |
+| MessageBird       | `apiKey, sender`                                         | Global                       |
+| SMSAPI            | `apiKey, sender`                                         | Europe                       |
+| Clickatell        | `apiKey, sender`                                         | Global                       |
+| Plivo             | `apiKey, apiSecret, sender`                              | Global                       |
+| Vibes             | `apiKey`                                                 | US                           |
+| SMS Gateway Hub   | `apiKey, sender`                                         | India                        |
+| TextMagic         | `apiKey, apiSecret, sender`                              | Global                       |
+> All providers use the same `sendSMS` helper, just change provider and API credentials.
+> How to use this table:
+> ```js
+> // Using eskiz provider (for example)
+> otp.sender({
+>   provider: 'eskiz', // (see Provider column)
+>   email: "YOUR_EMAIL_HERE", // (see Config Example column)
+>   password: "YOUR_PASSWORD_HERE", // (see Config Example column)
+>   sender: "YOUR_SENDER_NAME_HERE" // (see Config Example column)
+> });
+>```
+##### Error handling
 ```js
-otp.sender({
-  via: 'sms',
-  provider: 'vonage',
-  apiKey: 'API_KEY',
-  apiSecret: 'API_SECRET',
-  sender: 'SENDER_NAME',
-  mock: true // in dev prints message instead of sending
-});
+try {
+  const result = await auth.otp.send("+998901234567");
+} catch (err) {
+  console.error("SMS failed:", err.message);
+}
 ```
 
 #### Telegram sender
@@ -426,7 +493,6 @@ await otp.set("user@example.com");
 ### 📤 Send OTP
 ```js
 await otp.send("user@example.com", {
-    otpLen: 6 // length of otp code
     subject: "Your OTP Code",
     text: "Your OTP is 123456",
     html: "<b>123456</b>"
@@ -1773,4 +1839,4 @@ auth-verify/
 
 Contributions welcome! Open issues / PRs for bugs, improvements, or API suggestions.
 
-MIT © 2025 — Jahongir Sobirov
+MIT © 2025 - 2026 — Jahongir Sobirov
