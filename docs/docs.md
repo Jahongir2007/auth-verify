@@ -344,7 +344,7 @@ otp.sender({
 })
 ```
 
-#### Using API
+<!--#### Using API
 ```js
 otp.sender({
   via: "email",
@@ -353,7 +353,7 @@ otp.sender({
   apiService: "resend", // "postmark", "sendgrid"
   apiKey: "your-api-key"
 })
-```
+```-->
 
 #### SMS sender
 #### 📘 Auth-Verify SMS API — Full Guide
