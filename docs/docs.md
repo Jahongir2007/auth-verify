@@ -344,16 +344,20 @@ otp.sender({
 })
 ```
 
-<!--#### Using API
+#### Using API
 ```js
 otp.sender({
   via: "email",
   service: "api",
   sender: "your_email@gmail.com",
-  apiService: "resend", // "postmark", "sendgrid"
+  apiService: "resend", // "mailgun", "sendgrid"
   apiKey: "your-api-key"
 })
-```-->
+```
+> For `"mailgun"` you should also add also your domain 
+> ```js
+>  domain: "your-domain.com"
+>```
 
 #### SMS sender
 #### 📘 Auth-Verify SMS API — Full Guide
