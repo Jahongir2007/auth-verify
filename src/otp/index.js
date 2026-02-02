@@ -2,6 +2,10 @@ const {generateSecureOTP, resendGeneratedOTP, sendSMS} = require('../helpers/hel
 const Redis = require("ioredis");
 const nodemailer = require("nodemailer");
 const TelegramBot = require("node-telegram-bot-api");
+const sgMail = require('@sendgrid/mail')
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
+const { Resend } = require('resend');
 
 class OTPManager {
     constructor(otpOptions = {}){
@@ -35,6 +39,10 @@ class OTPManager {
             this.senderHost = otpOptions.sender.host;
             this.senderPort = otpOptions.sender.port;
             this.senderSecure = otpOptions.sender.secure;
+            // this.senderApiService = otpOptions.sender.api.service;
+            // this.senderApiKey = otpOptions.sender.api.key;
+            // this.senderApiSecret = otpOptions.sender.api.secret;
+            // this.senderApiUrl = otpOptions.sender.api.url;
         }
 
     }
@@ -147,6 +155,74 @@ class OTPManager {
 
             // ---- EMAIL PART ----
             if (this.senderConfig.via === 'email') {
+
+                // ---- API based ----
+
+                if(this.senderConfig.service === 'api'){
+                    if(this.senderConfig.apiService === 'sendgrid'){
+                        sgMail.setApiKey(this.senderConfig.apiKey)
+
+                        const apiMail = {
+                            to,
+                            from: this.senderConfig.sender,
+                            subject: subject || 'Your OTP Code',
+                            text: text || `Your OTP is ${this.code}`,
+                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        };
+
+                        try{
+                            const info = await sgMail.send(apiMail)
+                            this.recieverConfig = options
+                            return info
+                        }catch(err){
+                            throw new Error(err.response?.body || err.message)
+                        }
+                    }else if(this.senderConfig.apiService === 'mailgun'){
+                        const mg = new Mailgun(formData).client({
+                            username: 'api',
+                            key: this.senderConfig.apiKey,
+                        });
+
+                        const apiMail = {
+                            to,
+                            from: this.senderConfig.sender,
+                            subject: subject || 'Your OTP Code',
+                            text: text || `Your OTP is ${this.code}`,
+                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        };
+
+                        try{
+                            const info = await mg.messages.create(this.senderConfig.domain, apiMail)
+                            this.recieverConfig = options
+                            return info
+                        }catch(err){
+                            throw new Error(err.response?.body || err.message)
+                        }
+                    }else if(this.senderConfig.apiService === 'resend'){
+                        const resend = new Resend(this.senderConfig.apiKey);
+
+                        const apiMail = {
+                            to,
+                            from: this.senderConfig.sender,
+                            subject: subject || 'Your OTP Code',
+                            text: text || `Your OTP is ${this.code}`,
+                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        };
+
+                        try {
+                            const info = await resend.emails.send(apiMail);
+                            this.recieverConfig = options;
+                            return info;
+                        } catch(err) {
+                            throw new Error(err.response?.body || err.message);
+                        }
+                    }else {
+                        throw new Error(`Unsupported API email service: ${this.senderConfig.apiService}`);
+                    }
+                }
+
+                // ---- SMTP -----
+
                 let transporter;
 
                 if (this.senderConfig.service === 'gmail') {
@@ -166,7 +242,7 @@ class OTPManager {
                         pool: true,
                         maxConnections: 3,
                         maxMessages: 50
-                    });
+                    });    
                 } else {
                     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
                 }
@@ -539,15 +615,21 @@ class OTPManager {
             // const otpCode = this.generate(mailOption.otpLen = 6).set(reciever);
             // console.log(otpCode);
             if(this.senderConfig.via === 'email'){
-                await this.#sendEmail(reciever, mailOption);
-                return true;
+                if(this.senderConfig.service === 'smtp' || this.senderConfig.service === 'gmail'){
+                    await this.#sendEmail(reciever, mailOption);
+                    return true;
+                }else{
+                    return await this.#sendEmailApi(reciever, mailOption);
+                    // console.log('API')
+                    // return true;
+                }
             }else if(this.senderConfig.via === 'sms'){
                 await this.#sendSMS(reciever, mailOption);
                 return true;
             }else if(this.senderConfig.via === 'whatsapp'){
                 await this.#sendWhatsApp(reciever, mailOption);
                 return true;
-            }else {
+            }else{
                 throw new Error("senderConfig.via should be 'email' or 'sms'")
             }
         }
@@ -558,15 +640,15 @@ class OTPManager {
 
     #sendEmail(reciever, mailOption){
         return this.generate(mailOption.otpLen).set(reciever, (err)=>{
-            if(err) throw err
+            if(err) throw err;
 
             this.message({
                 to: reciever,
                 subject: mailOption.subject || "Your OTP code",
                 text: mailOption.text || `Your OTP code is ${this.code}`,
                 html: mailOption.html || `Your OTP code is ${this.code}`
+                });
             });
-        });
     }
 
     #sendSMS(reciever, smsOption){
@@ -588,6 +670,30 @@ class OTPManager {
                 to: reciever,
                 text: msgOption.text || `Your OTP code is ${this.code}`
             });
+        });
+    }
+
+    // #sendEmailApi(reciever, mailOption){
+    //     return this.generate(mailOption.otpLen).set(reciever, (err)=> {
+    //         if(err) throw err;
+
+    //         this.message({
+    //             to: reciever,
+    //             subject: mailOption.subject || "Your OTP code",
+    //             text: mailOption.text || `Your OTP code is ${this.code}`,
+    //             html: mailOption.html || `Your OTP code is ${this.code}`                 
+    //         })
+    //     })
+    // }
+
+    async #sendEmailApi(reciever, mailOption) {
+        await this.generate(mailOption.otpLen).set(reciever);
+
+        return await this.message({
+            to: reciever,
+            subject: mailOption.subject || "Your OTP code",
+            text: mailOption.text || `Your OTP code is ${this.code}`,
+            html: mailOption.html || `<p>Your OTP code is <b>${this.code}</b></p>`
         });
     }
 }
