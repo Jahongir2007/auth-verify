@@ -9,6 +9,8 @@ class SessionManager {
             this.sessions = new Map();
         } else if (this.storeType === 'redis') {
             this.redis = new Redis(options.redisUrl || "redis://localhost:6379");
+        }else if(this.storeType === 'none'){
+            return;
         } else {
             throw new Error("{storeTokens} should be 'memory' or 'redis'");
         }
