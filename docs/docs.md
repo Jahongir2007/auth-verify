@@ -495,16 +495,18 @@ await otp.set("user@example.com");
  - Can also use **callback style** for memory storage
 
 ### 📤 Send OTP
+First way
 ```js
 await otp.send("user@example.com", {
     subject: "Your OTP Code",
-    text: "Your OTP is 123456",
-    html: "<b>123456</b>"
+    text: code => `Your OTP is ${code}`,
+    html: code => `<b>${code}</b>`
 });
 
 // or simply
 await otp.send("user@example.com");
 ```
+
 Supports channels:
 | `via`    | Notes                                    |
 | -------- | ---------------------------------------- |
