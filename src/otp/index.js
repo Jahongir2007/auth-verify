@@ -6,6 +6,7 @@ const sgMail = require('@sendgrid/mail')
 const formData = require('form-data');
 const Mailgun = require('mailgun.js');
 const { Resend } = require('resend');
+const mail = require('@sendgrid/mail');
 
 class OTPManager {
     constructor(otpOptions = {}){
@@ -227,8 +228,14 @@ class OTPManager {
 
                 if (this.senderConfig.service === 'gmail') {
                     transporter = nodemailer.createTransport({
-                        service: 'gmail',
-                        auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
+                        host: "smtp.gmail.com",
+                        port: this.senderConfig.port || 587,           
+                        secure: false,       
+                        requireTLS: true, 
+                        auth: {
+                            user: this.senderConfig.sender,
+                            pass: this.senderConfig.pass, // app password
+                        },
                         pool: true,
                         maxConnections: 3,
                         maxMessages: 50
@@ -247,13 +254,32 @@ class OTPManager {
                     throw new Error(`Unsupported email service: ${this.senderConfig.service}`);
                 }
 
+                // const mail = {
+                //     from: this.senderConfig.sender,
+                //     to,
+                //     subject: subject || 'Your OTP Code',
+                //     text: text || `Your OTP is ${this.code}`,
+                //     html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                // };
+
                 const mail = {
-                    from: this.senderConfig.sender,
                     to,
+                    from: this.senderConfig.sender,
                     subject: subject || 'Your OTP Code',
-                    text: text || `Your OTP is ${this.code}`,
-                    html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
                 };
+
+                if (text !== undefined) {
+                    mail.text = text;
+                }
+
+                if (html !== undefined) {
+                    mail.html = html;
+                }
+
+                // fallback only if NOTHING provided
+                if (text === undefined && html === undefined) {
+                    mail.text = `Your OTP is ${this.code}`;
+                }
 
                 if (typeof callback === 'function') {
                     transporter.sendMail(mail, (err, info) => {
@@ -616,7 +642,47 @@ class OTPManager {
             // console.log(otpCode);
             if(this.senderConfig.via === 'email'){
                 if(this.senderConfig.service === 'smtp' || this.senderConfig.service === 'gmail'){
-                    await this.#sendEmail(reciever, mailOption);
+                    // await this.#sendEmail(reciever, mailOption);
+                    this.generate(mailOption.otpLen);
+                    await this.set(reciever);
+
+                    const resolvedHtml =
+                        typeof mailOption.html === 'function'
+                            ? mailOption.html(this.code)
+                            : mailOption.html;
+
+                    const resolvedText =
+                        typeof mailOption.text === 'function'
+                            ? mailOption.text(this.code)
+                            : mailOption.text;
+
+                    const mail = {
+                        from: this.senderConfig.sender,
+                        to: reciever,
+                        subject: mailOption.subject || 'Your OTP Code',
+                    };
+
+                    if (mailOption.text) {
+                        mail.text = resolvedText;
+                    }
+
+                    if (mailOption.html) {
+                        mail.html = resolvedHtml;
+                    }
+
+                    // fallback if neither provided
+                    if (!mailOption.text && !mailOption.html) {
+                        mail.text = `Your OTP is ${this.code}`;
+                    }
+
+                    // this.message({
+                    //     to: reciever,
+                    //     subject: mailOption.subject || "Email verification",
+                    //     html: resolvedHtml || `Your OTP code is <b>${this.code}</b>`,
+                    //     text: resolvedText || `Your OTP code is ${this.code}`,
+                    // });
+
+                    this.message(mail);
                     return true;
                 }else{
                     return await this.#sendEmailApi(reciever, mailOption);
@@ -638,17 +704,16 @@ class OTPManager {
         else return sendProcess();
     }
 
-    #sendEmail(reciever, mailOption){
-        return this.generate(mailOption.otpLen).set(reciever, (err)=>{
-            if(err) throw err;
+    async #sendEmail(reciever, mailOption) {
+        await this.generate(mailOption.otpLen).set(reciever);
 
-            this.message({
-                to: reciever,
-                subject: mailOption.subject || "Your OTP code",
-                text: mailOption.text || `Your OTP code is ${this.code}`,
-                html: mailOption.html || `Your OTP code is ${this.code}`
-                });
-            });
+    
+        return await this.message({
+            to: reciever,
+            subject: mailOption.subject || "Your OTP code",
+            text: mailOption.text || `Your OTP code is ${this.code}`,
+            html: mailOption.html || `<p>Your OTP code is <b>${this.code}</b></p>`
+        });
     }
 
     #sendSMS(reciever, smsOption){
