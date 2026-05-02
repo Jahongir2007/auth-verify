@@ -163,13 +163,33 @@ class OTPManager {
                     if(this.senderConfig.apiService === 'sendgrid'){
                         sgMail.setApiKey(this.senderConfig.apiKey)
 
+                        // const apiMail = {
+                        //     to,
+                        //     from: this.senderConfig.sender,
+                        //     subject: subject || 'Your OTP Code',
+                        //     text: text || `Your OTP is ${this.code}`,
+                        //     html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        // };
+
                         const apiMail = {
                             to,
                             from: this.senderConfig.sender,
                             subject: subject || 'Your OTP Code',
-                            text: text || `Your OTP is ${this.code}`,
-                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
                         };
+
+                        if (text !== undefined) {
+                            apiMail.text = text;
+                        }
+
+                        if (html !== undefined) {
+                            apiMail.html = html;
+                        }
+
+                        // fallback only if NOTHING provided
+                        if (text === undefined && html === undefined) {
+                            apiMail.text = `Your OTP is ${this.code}`;
+                            apiMail.html = `<p>Your OTP is <b>${this.code}</b></p>`;
+                        }
 
                         try{
                             const info = await sgMail.send(apiMail)
@@ -184,13 +204,33 @@ class OTPManager {
                             key: this.senderConfig.apiKey,
                         });
 
+                        // const apiMail = {
+                        //     to,
+                        //     from: this.senderConfig.sender,
+                        //     subject: subject || 'Your OTP Code',
+                        //     text: text || `Your OTP is ${this.code}`,
+                        //     html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        // };
+
                         const apiMail = {
                             to,
                             from: this.senderConfig.sender,
                             subject: subject || 'Your OTP Code',
-                            text: text || `Your OTP is ${this.code}`,
-                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
                         };
+
+                        if (text !== undefined) {
+                            apiMail.text = text;
+                        }
+
+                        if (html !== undefined) {
+                            apiMail.html = html;
+                        }
+
+                        // fallback only if NOTHING provided
+                        if (text === undefined && html === undefined) {
+                            apiMail.text = `Your OTP is ${this.code}`;
+                            apiMail.html = `<p>Your OTP is <b>${this.code}</b></p>`;
+                        }
 
                         try{
                             const info = await mg.messages.create(this.senderConfig.domain, apiMail)
@@ -202,13 +242,34 @@ class OTPManager {
                     }else if(this.senderConfig.apiService === 'resend'){
                         const resend = new Resend(this.senderConfig.apiKey);
 
+                        // const apiMail = {
+                        //     to,
+                        //     from: this.senderConfig.sender,
+                        //     subject: subject || 'Your OTP Code',
+                        //     text: text || `Your OTP is ${this.code}`,
+                        //     html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
+                        // };
+
                         const apiMail = {
                             to,
                             from: this.senderConfig.sender,
                             subject: subject || 'Your OTP Code',
-                            text: text || `Your OTP is ${this.code}`,
-                            html: html || `<p>Your OTP is <b>${this.code}</b></p>`,
                         };
+
+                        if (text !== undefined) {
+                            apiMail.text = text;
+                        }
+
+                        if (html !== undefined) {
+                            apiMail.html = html;
+                        }
+
+                        // fallback only if NOTHING provided
+                        if (text === undefined && html === undefined) {
+                            apiMail.text = `Your OTP is ${this.code}`;
+                            apiMail.html = `<p>Your OTP is <b>${this.code}</b></p>`;
+                        }
+
 
                         try {
                             const info = await resend.emails.send(apiMail);
@@ -752,14 +813,56 @@ class OTPManager {
     // }
 
     async #sendEmailApi(reciever, mailOption) {
-        await this.generate(mailOption.otpLen).set(reciever);
+        // await this.generate(mailOption.otpLen).set(reciever);
 
-        return await this.message({
+        // return await this.message({
+        //     to: reciever,
+        //     subject: mailOption.subject || "Your OTP code",
+        //     text: mailOption.text || `Your OTP code is ${this.code}`,
+        //     html: mailOption.html || `<p>Your OTP code is <b>${this.code}</b></p>`
+        // });
+
+        this.generate(mailOption.otpLen);
+        await this.set(reciever);
+
+        const resolvedHtml =
+            typeof mailOption.html === 'function'
+                ? mailOption.html(this.code)
+                : mailOption.html;
+
+        const resolvedText =
+            typeof mailOption.text === 'function'
+                ? mailOption.text(this.code)
+                : mailOption.text;
+
+        const mail = {
+            from: this.senderConfig.sender,
             to: reciever,
-            subject: mailOption.subject || "Your OTP code",
-            text: mailOption.text || `Your OTP code is ${this.code}`,
-            html: mailOption.html || `<p>Your OTP code is <b>${this.code}</b></p>`
-        });
+            subject: mailOption.subject || 'Your OTP Code',
+        };
+
+        if (mailOption.text) {
+            mail.text = resolvedText;
+        }
+
+        if (mailOption.html) {
+            mail.html = resolvedHtml;
+        }
+
+        // fallback if neither provided
+        if (!mailOption.text && !mailOption.html) {
+            mail.text = `Your OTP is ${this.code}`;
+        }
+
+        // this.message({
+        //     to: reciever,
+        //     subject: mailOption.subject || "Email verification",
+        //     html: resolvedHtml || `Your OTP code is <b>${this.code}</b>`,
+        //     text: resolvedText || `Your OTP code is ${this.code}`,
+        // });
+
+        this.message(mail);
+        return true;
     }
 }
 
