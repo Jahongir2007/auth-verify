@@ -51,7 +51,7 @@ class AuthVerify {
       redisUrl,
     });
 
-    this.session = new SessionManager({ storeTokens, redisUrl });
+    // this.session = new SessionManager({ storeTokens, redisUrl });
     this.oauth = new OAuthManager();
     this.totp = new TOTPManager(totp);
 
@@ -63,17 +63,17 @@ class AuthVerify {
   }
 
   // --- Session helpers ---
-  async createSession(userId, options = {}) {
-    return this.session.create(userId, options);
-  }
+  // async createSession(userId, options = {}) {
+  //   return this.session.create(userId, options);
+  // }
 
-  async verifySession(sessionId) {
-    return this.session.verify(sessionId);
-  }
+  // async verifySession(sessionId) {
+  //   return this.session.verify(sessionId);
+  // }
 
-  async destroySession(sessionId) {
-    return this.session.destroy(sessionId);
-  }
+  // async destroySession(sessionId) {
+  //   return this.session.destroy(sessionId);
+  // }
 
   // --- Passkey helpers ---
   async registerPasskey(user) {
