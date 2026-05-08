@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const Redis = require('ioredis');
+const sgMail = require('@sendgrid/mail');
+const formData = require('form-data');
+const Mailgun = require('mailgun.js');
+const { Resend } = require('resend');
 
 class MagicLinkManager {
   constructor(config = {}) {
@@ -40,18 +44,128 @@ class MagicLinkManager {
         ? mailOption.html.replace(/{{\s*link\s*}}/gi, link)
         : `<p>Click to login: <a href="${link}">${link}</a></p>`;
 
+      if(this.senderConfig.apiService === "sendgrid" && this.senderConfig.service === 'api'){
+        sgMail.setApiKey(this.senderConfig.apiKey)
+
+        const apiMail = {
+          to: email,
+          from: this.senderConfig.sender,
+          subject: mailOption.subject || 'Your Magic Login Link ✨',
+          html: letterHtml
+        };
+
+        try{
+          const info = await sgMail.send(apiMail)
+          this.recieverConfig = mailOption
+          // return info
+
+          let timeVal = 5 * 60 * 1000;
+          if (typeof this.expiresIn === 'string') {
+            if (this.expiresIn.endsWith('m')) timeVal = parseInt(this.expiresIn) * 60 * 1000;
+            else if (this.expiresIn.endsWith('s')) timeVal = parseInt(this.expiresIn) * 1000;
+          } else if (typeof this.expiresIn === 'number') timeVal = this.expiresIn * 1000;
+
+          if (this.storeType === 'memory') {
+            this.tokenStore.set(email, token);
+            setTimeout(() => this.tokenStore.delete(email), timeVal);
+          } else if (this.storeType === 'redis') {
+            await this.redis.set(email, token, 'PX', timeVal);
+          }
+
+          return { token, link };
+        }catch(err){
+          throw new Error(err.response?.body || err.message)
+        }
+      }else if(this.senderConfig.apiService === "mailgun" && this.senderConfig.service === "api"){
+        const mg = new Mailgun(formData).client({
+          username: 'api',
+          key: this.senderConfig.apiKey,
+        });
+
+        const apiMail = {
+          to: email,
+          from: this.senderConfig.sender,
+          subject: mailOption.subject || 'Your Magic Login Link ✨',
+          html: letterHtml
+        };
+
+        try{
+          const info = await mg.messages.create(this.senderConfig.domain, apiMail)
+          this.recieverConfig = mailOption
+          // return info
+
+          let timeVal = 5 * 60 * 1000;
+          if (typeof this.expiresIn === 'string') {
+            if (this.expiresIn.endsWith('m')) timeVal = parseInt(this.expiresIn) * 60 * 1000;
+            else if (this.expiresIn.endsWith('s')) timeVal = parseInt(this.expiresIn) * 1000;
+          } else if (typeof this.expiresIn === 'number') timeVal = this.expiresIn * 1000;
+
+          if (this.storeType === 'memory') {
+            this.tokenStore.set(email, token);
+            setTimeout(() => this.tokenStore.delete(email), timeVal);
+          } else if (this.storeType === 'redis') {
+            await this.redis.set(email, token, 'PX', timeVal);
+          }
+
+          return { token, link };
+        }catch(err){
+          throw new Error(err.response?.body || err.message)
+        }
+        
+      }else if(this.senderConfig.apiService === "resend" && this.senderConfig.service === 'api'){
+        const resend = new Resend(this.senderConfig.apiKey);
+
+        const apiMail = {
+          to: email,
+          from: this.senderConfig.sender,
+          subject: mailOption.subject || 'Your Magic Login Link ✨',
+          html: letterHtml
+        };
+
+        try {
+          const info = await resend.emails.send(apiMail);
+          this.recieverConfig = mailOption;
+          // return info;
+
+          let timeVal = 5 * 60 * 1000;
+          if (typeof this.expiresIn === 'string') {
+            if (this.expiresIn.endsWith('m')) timeVal = parseInt(this.expiresIn) * 60 * 1000;
+            else if (this.expiresIn.endsWith('s')) timeVal = parseInt(this.expiresIn) * 1000;
+          } else if (typeof this.expiresIn === 'number') timeVal = this.expiresIn * 1000;
+
+          if (this.storeType === 'memory') {
+            this.tokenStore.set(email, token);
+            setTimeout(() => this.tokenStore.delete(email), timeVal);
+          } else if (this.storeType === 'redis') {
+            await this.redis.set(email, token, 'PX', timeVal);
+          }
+
+          return { token, link };
+        } catch(err) {
+          throw new Error(err.response?.body || err.message);
+        }
+      }
+
       let transporter;
       if (this.senderConfig.service === 'gmail') {
         transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
+          host: 'smtp.gmail.com',
+          port: this.senderConfig.port || 587,
+          secure: this.senderConfig.secure || false,
+          auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
+          pool: true,
+          maxConnections: 3,
+          maxMessages: 50
         });
       } else {
         transporter = nodemailer.createTransport({
           host: this.senderConfig.host,
           port: this.senderConfig.port || 587,
           secure: this.senderConfig.secure || false,
-          auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass }
+          auth: { user: this.senderConfig.sender, pass: this.senderConfig.pass },
+          pool: true,
+          maxConnections: 3,
+          maxMessages: 50
         });
       }
 
@@ -86,7 +200,9 @@ class MagicLinkManager {
     const verifyProcess = async () => {
       try {
         const decoded = jwt.verify(token, this.secret);
-        // console.log(decoded);
+        // console.log("Decoded",decoded);
+        // console.log("Token", token);
+        // console.log("Secret", this.secret);
         const email = decoded.email;
 
         let stored;
@@ -101,7 +217,7 @@ class MagicLinkManager {
 
         return { success: true, user: decoded };
       } catch (err) {
-        throw new Error('Invalid or expired magic link');
+        throw new Error(`Invalid or expired magic link: ${err}`);
       }
     };
 
