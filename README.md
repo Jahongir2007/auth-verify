@@ -4,7 +4,7 @@
 
 # AuthVerify — Node.js Authentication Library
 
-AuthVerify is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications.
+AuthVerify is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, and OAuth helpers. You can easily register custom senders for OTPs or notifications.
 
 ![npm](https://img.shields.io/npm/v/auth-verify)
 ![npm downloads](https://img.shields.io/npm/dt/auth-verify)
