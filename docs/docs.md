@@ -1,6 +1,6 @@
 # auth-verify
 
-**AuthVerify** is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, Sessions, and OAuth helpers. You can easily register custom senders for OTPs or notifications. Auth-verify now supports **REST API** for generating, sending OTP with email/SMS and verifying it.
+**AuthVerify** is a modular authentication library for Node.js, providing JWT, OTP, TOTP, Passkeys (WebAuthn), Magic Links, and OAuth helpers. You can easily register custom senders for OTPs or notifications. Auth-verify now supports **REST API** for generating, sending OTP with email/SMS and verifying it.
  - [Installation](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-installation)
  - [Initialization](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-example-initialize-library-commonjs)
  - [JWT](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-jwt-usage)
@@ -11,7 +11,6 @@
  - [OAuth](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-oauth-manager--auth-verify)
  - [Magic Links](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-magiclink-passwordless-login-v180)
  - [Custom Senders](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#developer-extensibility-custom-senders)
- - [Session Management](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-sessionmanager-api-documentation---auth-verify)
  - [Crypto hashing](https://github.com/Jahongir2007/auth-verify/blob/main/docs/docs.md#-cryptomanager-api-guide)
  - [Auth-verify REST API](https://auth-verify-sy2y.onrender.com/)
 ---
@@ -30,11 +29,10 @@ npm install auth-verify
 
 ## ⚙️ Quick overview
 
-- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, (optionally) `.session`, `.totp` and `.oauth` managers.
+- `AuthVerify` (entry): constructs and exposes `.jwt`, `.otp`, `.totp` and `.oauth` managers.
 - `JWTManager`: sign, verify, decode, revoke tokens. Supports `storeTokens: "memory" | "redis" | "none"` and middleware with custom cookie, header, and token extraction.
 - `OTPManager`: generate, store, send, verify, resend OTPs. Supports `storeTokens: "memory" | "redis" | "none"`. Supports email, SMS helper, Telegram bot, and custom dev senders.
 - `TOTPManager`: generate, verify uri, codes and QR codes.
-- `SessionManager`: simple session creation/verification/destroy with memory or Redis backend.
 - `OAuthManager`: Handle OAuth 2.0 logins for 20+ providers.
 - `PasskeyManager`: Handle passwordless login and registration using WebAuthn/passkey.
 - `MagicLinkManager`: Handle passwordless login with magic link generation and verification.
@@ -1447,7 +1445,22 @@ await auth.magic.sender({
   pass: 'your_smtp_password'
 });
 ```
-> ✅ Both Gmail and any SMTP provider are supported.
+
+#### API services Example
+```js
+auth.magic.sender({
+  service: 'api',
+  apiService: 'resend', // 'mailgun', 'sendgrid'
+  sender:  'noreply@yourdomain.com',
+  apiKey: 'YOUR_API_KEY'
+})
+```
+> For `"mailgun"` you should also add also your domain 
+> ```js
+>  domain: "your-domain.com"
+>```
+
+> ✅ Gmail, any SMTP provider and API based email services are supported.
 > Use app passwords or tokens instead of your real password!
 
 ### 📩 Send Magic Link
@@ -1518,7 +1531,7 @@ auth.magic.send('user@example.com', (err) => {
 ```js
 const express = require('express');
 const bodyParser = require('body-parser');
-const { AuthVerify } = require('auth-verify');
+const AuthVerify = require('auth-verify');
 
 const app = express();
 app.use(bodyParser.json());
@@ -1599,79 +1612,6 @@ await auth.use('consoleOtp').send({ to: '+998901234567', code: await auth.otp.ge
 ---
 
 When a custom sender is registered, `auth.otp.message()` will first attempt the `customSender` before falling back to built-in providers.
-
----
-
-## 📝 SessionManager API Documentation - `auth-verify`
-The session manager of `auth-verify` provides a simple way to **create**, **verify**, and **destroy user sessions** in either **memory** or **Redis** storage.
-
-### Import
-```js
-const AuthVerify = require('auth-verify');
-const auth = new AuthVerify({ storeTokens: 'redis', redisUrl: "redis://localhost:6379" });
-```
-##### Options:
-| Option        | Type   | Default                    | Description                                               |
-| ------------- | ------ | -------------------------- | --------------------------------------------------------- |
-| `storeTokens` | string | `'memory'`                 | Storage type for sessions: `'memory'` or `'redis'`        |
-| `redisUrl`    | string | `"redis://localhost:6379"` | Redis connection URL (required if `storeTokens: 'redis'`) |
-
-### Methods
-#### 1️⃣ `create(userId, options)`
-Create a new session for a user.
-**Parameters:**
-| Name      | Type   | Required | Description                             |           |
-| --------- | ------ | -------- | --------------------------------------- | --------- |
-| `userId`  | string | ✅        | Unique ID of the user                   |           |
-| `options` | object | ❌        | Optional settings: `{ expiresIn: number | string }` |
-
-`expiresIn` formats:
- - Number → seconds
- - String → `"30s"`, `"5m"`, `"2h"`, `"1d"`
-##### **Returns:**
-`Promise<string>` → The session ID (UUID)
-##### **Example:**
-```js
-// Memory storage
-const auth = new AuthVerify({ storeTokens: 'memory' });
-const sessionId = await auth.session.create("user123", { expiresIn: "2h" });
-console.log(sessionId); // "550e8400-e29b-41d4-a716-446655440000"
-```
-#### 2️⃣ `verify(sessionId)`
-Verify if a session is valid.
-##### **Parameters:**
-| Name        | Type   | Required | Description              |
-| ----------- | ------ | -------- | ------------------------ |
-| `sessionId` | string | ✅        | The session ID to verify |
-##### Returns:
-`Promise<string>` → Returns the `userId` if session is valid
-##### Throws:
- - `"Session not found or expired"`
- - `"Session expired"`
-##### Example:
-```js
-const userId = await auth.session.verify(sessionId);
-console.log(userId); // "user123"
-```
-#### 3️⃣ `destroy(sessionId)`
-Invalidate (destroy) a session manually.
-##### Parameters:
-| Name        | Type   | Required | Description               |
-| ----------- | ------ | -------- | ------------------------- |
-| `sessionId` | string | ✅        | The session ID to destroy |
-##### Returns:
-`Promise<void>`
-##### Example:
-```js
-await auth.session.destroy(sessionId);
-console.log("Session destroyed");
-```
-
-### Notes & Best Practices
- - **Memory** storage is fast but not persistent across server restarts. Use **Redis** in production.
- - Always verify session before allowing access to protected routes.
- - Optionally, combine with JWT or OTP for multi-layered authentication.
- - Use `expiresIn` wisely — shorter times improve security but may require more frequent re-login.
 
 ---
 
@@ -1829,7 +1769,6 @@ auth-verify/
 │  ├─ totp/
 |  |  ├─ index.js
 |  |  ├─ base32.js
-│  ├─ /session/index.js
 |  ├─ /oauth/index.js
 │  └─ helpers/helper.js
 ├─ rest-api/
